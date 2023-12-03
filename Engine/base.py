@@ -62,6 +62,13 @@ class BaseEngine():
             condition = kwargs.group(2)
             data = kwargs.group(3)
             self.update_data(table_name, condition, data)
+        elif re.match(self.command_dict['projection'], input_str):
+            # projection
+            # example: show column id,name from table_name
+            kwargs = re.match(self.command_dict['projection'], input_str)
+            fields = kwargs.group(1)
+            table_name = kwargs.group(2)
+            self.projection(table_name, fields)
 
         return True
 
@@ -84,11 +91,11 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def update_data():
+    def update_data(self, table_name, condition, data):
         pass
 
     @abstractmethod
-    def projection():
+    def projection(self, table_name, fields):
         pass
 
     @abstractmethod
