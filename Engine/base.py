@@ -69,6 +69,14 @@ class BaseEngine():
             fields = kwargs.group(1)
             table_name = kwargs.group(2)
             self.projection(table_name, fields)
+        elif re.match(self.command_dict['filtering'], input_str):
+            # filtering
+            # example: show data id,name from table_name where id=4
+            kwargs = re.match(self.command_dict['filtering'], input_str)
+            fields = kwargs.group(1)
+            table_name = kwargs.group(2)
+            condition = kwargs.group(3)
+            self.filtering(table_name, fields, condition)
 
         return True
 
@@ -99,7 +107,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def filtering():
+    def filtering(self, table_name, fields, condition):
         pass
 
     @abstractmethod

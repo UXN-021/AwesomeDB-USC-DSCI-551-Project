@@ -1,6 +1,6 @@
 from utils.util import get_format_str, print_row, print_table_header
 from .base import BaseEngine
-from config import BASE_DIR, CHUNK_SIZE
+from config import BASE_DIR, CHUNK_SIZE, FIELD_PRINT_LEN
 import os
 import re
 import operator
@@ -135,7 +135,6 @@ class Relational(BaseEngine):
                             f.write(line + "\n")
 
     def projection(self, table_name, fields):
-        field_print_len = 20
         # check if the fields are in the table schema
         table_schema = self._get_table_schema(table_name)
         for field in fields.split(","):
@@ -148,7 +147,7 @@ class Relational(BaseEngine):
             projection_schema.append(field)
             
         # get the format string for printing
-        format_str = get_format_str(projection_schema, field_print_len)
+        format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
         # print the header
         print_table_header(projection_schema, format_str)
         
@@ -164,12 +163,44 @@ class Relational(BaseEngine):
                         for field in table_schema:
                             row_dict[field] = row[table_schema.index(field)]
                         # print the row
-                        print_row(row_dict, projection_schema, format_str, field_print_len)
+                        print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
                         
         
 
-    def filtering(self, fields, table_name, condition):
-        print("filtering")
+    def filtering(self, table_name, fields, condition):
+        # check if the fields are in the table schema
+        table_schema = self._get_table_schema(table_name)
+        for field in fields.split(","):
+            if field not in table_schema:
+                raise Exception(f"field {field} not in table schema")
+            
+        # create a schema for the projection table
+        projection_schema = []
+        for field in fields.split(","):
+            projection_schema.append(field)
+            
+        # get the format string for printing
+        format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(projection_schema, format_str)
+        
+        # iterate through all .csv file and print the specified fields to console
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        for file in os.listdir(table_storage_path):
+            if file.endswith(".csv"):
+                with open(f"{table_storage_path}/{file}", "r") as f:
+                    for line in f.readlines():
+                        line = line.rstrip("\n")
+                        # check if the row meets the condition
+                        if not self._row_meets_condition(table_schema, line, condition):
+                            continue
+                        # same as projection
+                        row = line.split(",")
+                        row_dict = {}
+                        for field in table_schema:
+                            row_dict[field] = row[table_schema.index(field)]
+                        # print the row
+                        print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
 
     def join(self, table_name1, table_name2, condition):
         print("join")
