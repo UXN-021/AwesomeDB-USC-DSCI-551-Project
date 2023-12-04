@@ -77,6 +77,18 @@ class BaseEngine():
             table_name = kwargs.group(2)
             condition = kwargs.group(3)
             self.filtering(table_name, fields, condition)
+        elif re.match(self.command_dict['order'], input_str):
+            # order
+            # example: sort data in table_name by id desc
+            kwargs = re.match(self.command_dict['order'], input_str)
+            table_name = kwargs.group(1)
+            field = kwargs.group(2)
+            order_method = kwargs.group(3)
+            # check if order_method is valid
+            if order_method not in ['asc', 'desc']:
+                print("order method must be asc or desc")
+                return True
+            self.order(table_name, field, order_method)
 
         return True
 
@@ -123,7 +135,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def order():
+    def order(self, table_name, field, order_method):
         pass
 
     @abstractmethod

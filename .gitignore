@@ -3,6 +3,7 @@ Storage/NoSQL/*
 Storage/Relational/*
 ToBeLoaded/*
 projEnv
+Temp/*
 
 
 # Byte-compiled / optimized / DLL files

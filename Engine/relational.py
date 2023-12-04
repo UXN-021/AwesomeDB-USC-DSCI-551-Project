@@ -1,9 +1,12 @@
+from utils.RowElement import RowElement
 from utils.util import get_format_str, print_row, print_table_header
 from .base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE, FIELD_PRINT_LEN
 import os
 import re
 import operator
+import csv
+from queue import PriorityQueue
 
 class Relational(BaseEngine):
     def __init__(self):
@@ -208,8 +211,132 @@ class Relational(BaseEngine):
     def aggregate(self, fields, table_name, condition):
         print("aggregate")
 
-    def order(self, table_name, field, order):
-        print("order")
+    def order(self, table_name, field, order_method):
+        # check if the field is in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if field not in table_schema:
+            raise Exception(f"field {field} not in table schema")
+        # find the index of the field
+        field_index = table_schema.index(field)
+        field_type = None
+        # creates temporary sorted csv table in the Temp directory
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        for file in os.listdir(table_storage_path):
+            if file.endswith(".csv"):
+                # sort the csv file based on the field
+                with open(f"{table_storage_path}/{file}", "r") as f:
+                    csv_reader = csv.reader(f)
+                    # determine the field type
+                    if field_type is None:
+                        for row in csv_reader:
+                            if row[field_index].isdigit():
+                                field_type = int
+                                break
+                            elif row[field_index].replace('.', '', 1).isdigit():
+                                field_type = float
+                                break
+                            else:
+                                field_type = str
+                                break
+                    # get the value of the field
+                    def get_key(row):
+                        if field_type == int:
+                            return int(row[field_index])
+                        elif field_type == float:
+                            return float(row[field_index]) if row[field_index] != "" else float("-inf")
+                        else:
+                            return row[field_index]
+                    sorted_table = sorted(csv_reader, key = lambda row: get_key(row), reverse = True if order_method == "desc" else False)
+                # write the sorted table to the Temp directory
+                chunk_num = file.split(".")[0].split("_")[1]
+                with open(f"{BASE_DIR}/Temp/chunk_{chunk_num}_pass_0.csv", "w") as f:
+                    csv_writer = csv.writer(f)
+                    csv_writer.writerows(sorted_table)
+        # merge the sorted chunks
+        merged_file = self._merge_sorted_chunks(field, table_schema, order_method, 0)
+        # print the merged file
+        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
+        print_table_header(table_schema, format_str)
+        with open(merged_file, "r") as f:
+            csv_reader = csv.reader(f)
+            for row in csv_reader:
+                row_dict = {}
+                for field in table_schema:
+                    row_dict[field] = row[table_schema.index(field)]
+                # print the row
+                print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
+
+        # clear the Temp directory
+        for file in os.listdir(f"{BASE_DIR}/Temp"):
+            os.remove(f"{BASE_DIR}/Temp/{file}")
+        
+
+    def _merge_sorted_chunks(self, field, schema, order_method, pass_num) -> str:
+        # get the path of the temp directory
+        temp_path = f"{BASE_DIR}/Temp"
+        # get the index of the field
+        field_index = schema.index(field)
+        # find the max chunk number under the temp_path
+        max_chunk_num = -1
+        for file in os.listdir(temp_path):
+            # ignore the files not in current pass
+            if file.endswith(".csv") and file.split(".")[0].split("_")[3] == str(pass_num):
+                chunk_num = int(file.split("_")[1])
+                if chunk_num > max_chunk_num:
+                    max_chunk_num = chunk_num
+
+        if max_chunk_num == 0 or max_chunk_num == -1:
+            # no need to merge
+            return f"{temp_path}/chunk_0_pass_{pass_num}.csv"
+
+        next_chunk_num = 0 # the chunk number of the merged file in the next pass
+        start_chunk_num = 0 # the starting chunk of current merge group
+        end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1)
+        while start_chunk_num <= max_chunk_num:
+            output_file = f"{temp_path}/chunk_{next_chunk_num}_pass_{pass_num + 1}.csv"
+            reader_dict = {} # key: chunk_num, value: csv_reader
+            loaded_rows = PriorityQueue() # pq of tuples (key, (row, chunk_num))
+            # open the csv readers for all the chunks in the current merge group
+            opened_files = []
+            for chunk_num in range(start_chunk_num, end_chunk_num):
+                chunk_file_name = f"{temp_path}/chunk_{chunk_num}_pass_{pass_num}.csv"
+                opened_file = open(chunk_file_name, "r")
+                opened_files.append(opened_file)
+                reader_dict[chunk_num] = csv.reader(opened_file)
+            # load the first row from each chunk into the heap
+            for chunk_num in range(start_chunk_num, end_chunk_num):
+                csv_reader = reader_dict[chunk_num]
+                row = next(csv_reader, None)
+                if row is not None:
+                    row_element = RowElement(chunk_num, row, field_index, order_method)
+                    loaded_rows.put(row_element)
+            # output until the heap is empty
+            while not loaded_rows.empty():
+                row_element = loaded_rows.get()
+                row = row_element.row
+                chunk_num = row_element.chunk_num
+                # write the row to the output file
+                with open(output_file, "a") as f:
+                    csv_writer = csv.writer(f)
+                    csv_writer.writerow(row)
+                # load the next row from the same chunk
+                next_row = next(reader_dict[chunk_num], None)
+                if next_row is not None:
+                    row_element = RowElement(chunk_num, next_row, field_index, order_method)
+                    loaded_rows.put(row_element)
+            # close all open files
+            for opened_file in opened_files:
+                opened_file.close()
+            # update the start/end_chunk_num and next_chunk_num
+            start_chunk_num += CHUNK_SIZE
+            end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1)
+            next_chunk_num += 1
+
+        # proceed to the next pass
+        return self._merge_sorted_chunks(field, schema, order_method, pass_num + 1)
+
+
+        
 
 
     def run(self):
