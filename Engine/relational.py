@@ -299,7 +299,7 @@ class Relational(BaseEngine):
                     # update the prev_group_by_field_value
                 
                 # same group, update the aggregate result
-                cur_aggregate_field_value = int(float(row[aggregate_field_index])) if row[aggregate_field_index] != "" else 0
+                cur_aggregate_field_value = int(float(row[aggregate_field_index])) if row[aggregate_field_index].isdigit() or row[aggregate_field_index].replace('.', '', 1).isdigit() else 0
                 if aggregate_method == "sum":
                     if cur_group_result is None:
                         cur_group_result = 0
@@ -332,6 +332,59 @@ class Relational(BaseEngine):
                     cur_group_result = "0"
                 print_row({group_by_field: prev_group_by_field_value, f"{aggregate_method}({aggregate_field})": str(cur_group_result)}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
+
+    def aggregate_table(self, table_name, aggregate_method, aggregate_field):
+        # check if the fields are in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if aggregate_field not in table_schema:
+            raise Exception(f"field {aggregate_field} not in table schema")
+        # get the index of the fields
+        aggregate_field_index = table_schema.index(aggregate_field)
+        # output schema
+        output_schema = (f"{aggregate_method}({aggregate_field})",)
+        # get the format string for printing
+        format_str = get_format_str(output_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(output_schema, format_str)
+        # iterate through all chunks and output the aggregate result
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        cur_result = None
+        for file in os.listdir(table_storage_path):
+            if file.endswith(".csv"):
+                with open(f"{table_storage_path}/{file}", "r") as f:
+                    csv_reader = csv.reader(f)
+                    row = next(csv_reader, None)
+                    while row is not None:
+                        # get the aggregate_field value
+                        curr_aggregate_field_value = int(float(row[aggregate_field_index])) if row[aggregate_field_index].isdigit() or row[aggregate_field_index].replace('.', '', 1).isdigit() else 0
+                        if aggregate_method == "sum":
+                            if cur_result is None:
+                                cur_result = 0
+                            cur_result += curr_aggregate_field_value
+                        elif aggregate_method == "avg":
+                            if cur_result is None:
+                                cur_result = (0, 0)
+                            cur_result = (cur_result[0] + curr_aggregate_field_value, cur_result[1] + 1)
+                        elif aggregate_method == "count":
+                            if cur_result is None:
+                                cur_result = 0
+                            cur_result += 1
+                        elif aggregate_method == "max":
+                            if cur_result is None:
+                                cur_result = curr_aggregate_field_value
+                            cur_result = max(cur_result, curr_aggregate_field_value)
+                        elif aggregate_method == "min":
+                            if cur_result is None:
+                                cur_result = curr_aggregate_field_value
+                            cur_result = min(cur_result, curr_aggregate_field_value)
+                        # get the next row
+                        row = next(csv_reader, None)
+        
+        if aggregate_method == "avg" and cur_result is not None:
+            cur_result = int(cur_result[0] / cur_result[1])
+        if cur_result is None:
+            cur_result = "0"
+        print_row({f"{aggregate_method}({aggregate_field})": str(cur_result)}, output_schema, format_str, FIELD_PRINT_LEN)
 
                 
 

@@ -12,10 +12,12 @@ class BaseEngine():
         "projection": r'show column (.*?) from (.*?);',
         "filtering": r'show data (.*?) from (.*?) where (.*?);',
         "join": r'join (.*?) and (.*?) on (.*?);',
-        "aggregate": r'find (.*?) from (.*?) group by (.*?);',
+        "aggregate": r'find (.*?) in (.*?) group by (.*?);',
         "order": r'sort data in (.*?) by (.*?) (.*?);',
         "exit": r'exit',
         "load_data": r'load data from (.*?);',
+        "aggregate_table": r'find (.*?) in (.*?);',
+        "group": r"group (.*?) by (.*?);"
     }
 
     def parse_and_execute(self, input_str):
@@ -111,6 +113,19 @@ class BaseEngine():
             table_name = kwargs.group(2)
             group_field = kwargs.group(3)
             self.aggregate(table_name, aggregation_method, aggregation_field, group_field)
+        elif re.match(self.command_dict['aggregate_table'], input_str):
+            # aggregate table
+            # example: find max(salary) from table_name
+            kwargs = re.match(self.command_dict['aggregate_table'], input_str)
+            agg = kwargs.group(1)
+            aggregation_method = re.match(r'(.*?)\((.*?)\)', agg).group(1)
+            aggregation_field = re.match(r'(.*?)\((.*?)\)', agg).group(2)
+            # check if aggregation method is valid
+            if aggregation_method not in ['max', 'min', 'sum', 'avg', 'count']:
+                print("aggregation method must be max, min, sum or avg")
+                return True
+            table_name = kwargs.group(2)
+            self.aggregate_table(table_name, aggregation_method, aggregation_field)
         else:
             print("invalid query")
         return True
@@ -155,6 +170,10 @@ class BaseEngine():
 
     @abstractmethod
     def aggregate(self, table_name, aggregation_method, aggregation_field, group_field):
+        pass
+
+    @abstractmethod
+    def aggregate_table(self, table_name, aggregation_method, aggregation_field):
         pass
 
     @abstractmethod
