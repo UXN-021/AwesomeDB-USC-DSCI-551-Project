@@ -386,7 +386,39 @@ class Relational(BaseEngine):
             cur_result = "0"
         print_row({f"{aggregate_method}({aggregate_field})": str(cur_result)}, output_schema, format_str, FIELD_PRINT_LEN)
 
-                
+    def group(self, table_name, group_by_field):
+        # check if the fields are in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if group_by_field not in table_schema:
+            raise Exception(f"field {group_by_field} not in table schema")
+        # get the index of the fields
+        group_by_field_index = table_schema.index(group_by_field)
+        # sort the table by group_by_field
+        sorted_file = self._external_sort(table_name, group_by_field, "asc")
+        # output schema
+        output_schema = (group_by_field,)
+        # get the format string for printing
+        format_str = get_format_str(output_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(output_schema, format_str)
+        # iterate through the sorted table and output the aggregate result
+        with open(sorted_file, "r") as f:
+            csv_reader = csv.reader(f)
+            row = next(csv_reader, None)
+            prev_group_by_field_value = None
+            while row is not None:
+                # get the group_by_field value
+                curr_group_by_field_value = row[group_by_field_index]
+                if curr_group_by_field_value != prev_group_by_field_value and prev_group_by_field_value is not None:
+                    # group_by_field value changes, output the aggregate result of the previous group
+                    print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
+                # get the next row
+                row = next(csv_reader, None)
+                prev_group_by_field_value = curr_group_by_field_value
+            if row is None and prev_group_by_field_value is not None:
+                # output the aggregate result of the last group
+                print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
+        clear_temp_files()
 
     def order(self, table_name, field, order_method):
         # check if the field is in the table schema

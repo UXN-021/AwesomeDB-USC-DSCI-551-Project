@@ -126,6 +126,13 @@ class BaseEngine():
                 return True
             table_name = kwargs.group(2)
             self.aggregate_table(table_name, aggregation_method, aggregation_field)
+        elif re.match(self.command_dict['group'], input_str):
+            # group
+            # example: group table_name by age;
+            kwargs = re.match(self.command_dict['group'], input_str)
+            table_name = kwargs.group(1)
+            group_field = kwargs.group(2)
+            self.group(table_name, group_field)
         else:
             print("invalid query")
         return True
@@ -165,7 +172,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def group():
+    def group(self, table_name, group_field):
         pass
 
     @abstractmethod
