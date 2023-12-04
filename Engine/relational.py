@@ -206,38 +206,58 @@ class Relational(BaseEngine):
                         print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
 
     # use right table as outter table
-    # def join(self, left, right, condition):
-    #     left_schema = self._get_table_schema(left)
-    #     right_schema = self._get_table_schema(right)
-    #     # extract the fields from the condition
-    #     match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
-    #     left_field, op, right_field = match.groups()
-    #     # check if the fields are in the table schema
-    #     if left_field not in left_schema or right_field not in right_schema:
-    #         raise Exception(f"field {left_field} not in table schema")
-    #     # get the index of the fields
-    #     left_field_index = left_schema.index(left_field)
-    #     right_field_index = right_schema.index(right_field)
-    #     # for each chunk in the right table, iterate through all rows in the left table
-    #     # and output matching rows to console
-    #     left_table_storage_path = f"{BASE_DIR}/Storage/Relational/{left}"
-    #     right_table_storage_path = f"{BASE_DIR}/Storage/Relational/{right}"
-    #     for right_file in os.listdir(right_table_storage_path):
-    #         if right_file.endswith(".csv"):
-    #             with open(f"{right_table_storage_path}/{right_file}", "r") as right_f:
-    #                 right_csv_reader = csv.reader(right_f)
-    #                 right_row = next(right_csv_reader, None)
-    #                 while right_row is not None:
-    #                     right_field_value = right_row[right_field_index]
-    #                     # convert the condition id=id to id=4 for the left table
-    #                     new_condition = f"{left_field}{op}{right_field_value}"
-    #                     for left_file in os.listdir(left_table_storage_path):
-    #                         if left_file.endswith(".csv"):
-    #                             with open(f"{left_table_storage_path}/{left_file}", "r") as left_f:
-    #                                 line = left_f.readline().rstrip("\n")
-
-        
-    #     pass
+    def join(self, left, right, condition):
+        left_schema = self._get_table_schema(left)
+        right_schema = self._get_table_schema(right)
+        # extract the fields from the condition
+        match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
+        left_field, op, right_field = match.groups()
+        # check if the fields are in the table schema
+        if left_field not in left_schema or right_field not in right_schema:
+            raise Exception(f"field {left_field} not in table schema")
+        # get the index of the fields
+        left_field_index = left_schema.index(left_field)
+        right_field_index = right_schema.index(right_field)
+        # joined schema
+        joined_schema = []
+        for field in left_schema:
+            joined_schema.append(f"{left}.{field}")
+        for field in right_schema:
+            joined_schema.append(f"{right}.{field}")
+        joined_schema = tuple(joined_schema)
+        # get the format string for printing
+        format_str = get_format_str(joined_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(joined_schema, format_str)
+        # for each chunk in the right table, iterate through all rows in the left table
+        # and output matching rows to console
+        left_table_storage_path = f"{BASE_DIR}/Storage/Relational/{left}"
+        right_table_storage_path = f"{BASE_DIR}/Storage/Relational/{right}"
+        # loop through outter table
+        for right_file in os.listdir(right_table_storage_path):
+            if right_file.endswith(".csv"):
+                with open(f"{right_table_storage_path}/{right_file}", "r") as right_f:
+                    right_csv_reader = csv.reader(right_f)
+                    for right_row in right_csv_reader:
+                        right_field_value = right_row[right_field_index]
+                        # convert the condition id=id to id=4 for the left table
+                        new_condition = f"{left_field}{op}{right_field_value}"
+                        # loop through inner table
+                        for left_file in os.listdir(left_table_storage_path):
+                            if left_file.endswith(".csv"):
+                                with open(f"{left_table_storage_path}/{left_file}", "r") as left_f:
+                                    left_csv_reader = csv.reader(left_f)
+                                    for left_row in left_csv_reader:
+                                        # check if the row meets the condition
+                                        if not self._row_meets_condition(left_schema, left_row, new_condition):
+                                            continue
+                                        # print the row
+                                        row_dict = {}
+                                        for field in left_schema:
+                                            row_dict[f"{left}.{field}"] = left_row[left_schema.index(field)]
+                                        for field in right_schema:
+                                            row_dict[f"{right}.{field}"] = right_row[right_schema.index(field)]
+                                        print_row(row_dict, joined_schema, format_str, FIELD_PRINT_LEN)
 
     def aggregate(self, fields, table_name, condition):
         print("aggregate")
