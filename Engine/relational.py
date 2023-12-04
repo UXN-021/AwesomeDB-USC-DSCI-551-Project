@@ -205,8 +205,39 @@ class Relational(BaseEngine):
                         # print the row
                         print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
 
-    def join(self, table_name1, table_name2, condition):
-        print("join")
+    # use right table as outter table
+    # def join(self, left, right, condition):
+    #     left_schema = self._get_table_schema(left)
+    #     right_schema = self._get_table_schema(right)
+    #     # extract the fields from the condition
+    #     match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
+    #     left_field, op, right_field = match.groups()
+    #     # check if the fields are in the table schema
+    #     if left_field not in left_schema or right_field not in right_schema:
+    #         raise Exception(f"field {left_field} not in table schema")
+    #     # get the index of the fields
+    #     left_field_index = left_schema.index(left_field)
+    #     right_field_index = right_schema.index(right_field)
+    #     # for each chunk in the right table, iterate through all rows in the left table
+    #     # and output matching rows to console
+    #     left_table_storage_path = f"{BASE_DIR}/Storage/Relational/{left}"
+    #     right_table_storage_path = f"{BASE_DIR}/Storage/Relational/{right}"
+    #     for right_file in os.listdir(right_table_storage_path):
+    #         if right_file.endswith(".csv"):
+    #             with open(f"{right_table_storage_path}/{right_file}", "r") as right_f:
+    #                 right_csv_reader = csv.reader(right_f)
+    #                 right_row = next(right_csv_reader, None)
+    #                 while right_row is not None:
+    #                     right_field_value = right_row[right_field_index]
+    #                     # convert the condition id=id to id=4 for the left table
+    #                     new_condition = f"{left_field}{op}{right_field_value}"
+    #                     for left_file in os.listdir(left_table_storage_path):
+    #                         if left_file.endswith(".csv"):
+    #                             with open(f"{left_table_storage_path}/{left_file}", "r") as left_f:
+    #                                 line = left_f.readline().rstrip("\n")
+
+        
+    #     pass
 
     def aggregate(self, fields, table_name, condition):
         print("aggregate")
@@ -227,6 +258,7 @@ class Relational(BaseEngine):
                 with open(f"{table_storage_path}/{file}", "r") as f:
                     csv_reader = csv.reader(f)
                     # determine the field type
+                    # !!! issue: weak typing
                     if field_type is None:
                         for row in csv_reader:
                             if row[field_index].isdigit():

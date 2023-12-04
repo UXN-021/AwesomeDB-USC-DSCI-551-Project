@@ -89,6 +89,14 @@ class BaseEngine():
                 print("order method must be asc or desc")
                 return True
             self.order(table_name, field, order_method)
+        elif re.match(self.command_dict['join'], input_str):
+            # join
+            # example: join table1 and table2 on table1.id=table2.id
+            kwargs = re.match(self.command_dict['join'], input_str)
+            table1 = kwargs.group(1)
+            table2 = kwargs.group(2)
+            condition = kwargs.group(3)
+            self.join(table1, table2, condition)
 
         return True
 
@@ -123,7 +131,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def join():
+    def join(self, left, right, condition):
         pass
 
     @abstractmethod
