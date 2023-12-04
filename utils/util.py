@@ -1,3 +1,8 @@
+import os
+
+from config import BASE_DIR
+
+
 def get_format_str(schema, max_length=10):
     format_str = ""
     for field in schema:
@@ -13,7 +18,7 @@ def print_table_header(schema, format_str):
 def print_row(row_dict, schema, format_str, max_length):
     row_list = []
     for field in schema:
-        field_value = row_dict[field]
+        field_value = str(row_dict[field])
         field_value += "   "
         if len(field_value) > max_length:
             field_value = field_value[:max_length - 6] + "...   "
@@ -21,3 +26,7 @@ def print_row(row_dict, schema, format_str, max_length):
         else:
             row_list.append(field_value)
     print(format_str.format(*row_list))
+
+def clear_temp_files():
+    for file in os.listdir(f"{BASE_DIR}/Temp"):
+            os.remove(f"{BASE_DIR}/Temp/{file}")

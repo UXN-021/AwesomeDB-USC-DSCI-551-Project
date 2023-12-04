@@ -97,7 +97,22 @@ class BaseEngine():
             table2 = kwargs.group(2)
             condition = kwargs.group(3)
             self.join(table1, table2, condition)
-
+        elif re.match(self.command_dict['aggregate'], input_str):
+            # aggregate
+            # example: find max(salary) from table_name group by age;
+            kwargs = re.match(self.command_dict['aggregate'], input_str)
+            agg = kwargs.group(1)
+            aggregation_method = re.match(r'(.*?)\((.*?)\)', agg).group(1)
+            aggregation_field = re.match(r'(.*?)\((.*?)\)', agg).group(2)
+            # check if aggregation method is valid
+            if aggregation_method not in ['max', 'min', 'sum', 'avg', 'count']:
+                print("aggregation method must be max, min, sum or avg")
+                return True
+            table_name = kwargs.group(2)
+            group_field = kwargs.group(3)
+            self.aggregate(table_name, aggregation_method, aggregation_field, group_field)
+        else:
+            print("invalid query")
         return True
 
 
@@ -139,7 +154,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def aggregate():
+    def aggregate(self, table_name, aggregation_method, aggregation_field, group_field):
         pass
 
     @abstractmethod

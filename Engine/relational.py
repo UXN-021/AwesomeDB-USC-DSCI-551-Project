@@ -1,5 +1,5 @@
 from utils.RowElement import RowElement
-from utils.util import get_format_str, print_row, print_table_header
+from utils.util import clear_temp_files, get_format_str, print_row, print_table_header
 from .base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE, FIELD_PRINT_LEN
 import os
@@ -259,10 +259,105 @@ class Relational(BaseEngine):
                                             row_dict[f"{right}.{field}"] = right_row[right_schema.index(field)]
                                         print_row(row_dict, joined_schema, format_str, FIELD_PRINT_LEN)
 
-    def aggregate(self, fields, table_name, condition):
-        print("aggregate")
+    def aggregate(self, table_name, aggregate_method, aggregate_field, group_by_field):
+        # check if the fields are in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if group_by_field not in table_schema:
+            raise Exception(f"field {group_by_field} not in table schema")
+        if aggregate_field not in table_schema:
+            raise Exception(f"field {aggregate_field} not in table schema")
+        # get the index of the fields
+        group_by_field_index = table_schema.index(group_by_field)
+        aggregate_field_index = table_schema.index(aggregate_field)
+        # sort the table by group_by_field
+        sorted_file = self._external_sort(table_name, group_by_field, "asc")
+        # output schema
+        output_schema = (group_by_field, f"{aggregate_method}({aggregate_field})")
+        # get the format string for printing
+        format_str = get_format_str(output_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(output_schema, format_str)
+        # iterate through the sorted table and output the aggregate result
+        with open(sorted_file, "r") as f:
+            csv_reader = csv.reader(f)
+            row = next(csv_reader, None)
+            cur_group_result = None
+            prev_group_by_field_value = None
+            while row is not None:
+                # get the group_by_field value
+                curr_group_by_field_value = row[group_by_field_index]
+                
+                if curr_group_by_field_value != prev_group_by_field_value and prev_group_by_field_value is not None:
+                    # group_by_field value changes, output the aggregate result of the previous group
+                    if cur_group_result is not None and aggregate_method == "avg":
+                        cur_group_result = int(cur_group_result[0] / cur_group_result[1])
+                    if cur_group_result is None:
+                        cur_group_result = "0"
+                    print_row({group_by_field: prev_group_by_field_value, f"{aggregate_method}({aggregate_field})": str(cur_group_result)}, output_schema, format_str, FIELD_PRINT_LEN)
+                    # reset the aggregate result
+                    cur_group_result = None
+                    # update the prev_group_by_field_value
+                
+                # same group, update the aggregate result
+                cur_aggregate_field_value = int(float(row[aggregate_field_index])) if row[aggregate_field_index] != "" else 0
+                if aggregate_method == "sum":
+                    if cur_group_result is None:
+                        cur_group_result = 0
+                    cur_group_result += cur_aggregate_field_value
+                elif aggregate_method == "avg":
+                    if cur_group_result is None:
+                        cur_group_result = (0, 0) # (sum, count)
+                    cur_group_result = (cur_group_result[0] + cur_aggregate_field_value, cur_group_result[1] + 1)
+                elif aggregate_method == "count":
+                    if cur_group_result is None:
+                        cur_group_result = 0
+                    cur_group_result += 1
+                elif aggregate_method == "max":
+                    if cur_group_result is None:
+                        cur_group_result = cur_aggregate_field_value
+                    cur_group_result = max(cur_group_result, cur_aggregate_field_value)
+                elif aggregate_method == "min":
+                    if cur_group_result is None:
+                        cur_group_result = cur_aggregate_field_value
+                    cur_group_result = min(cur_group_result, cur_aggregate_field_value)
+                # get the next row
+                row = next(csv_reader, None)
+
+                prev_group_by_field_value = curr_group_by_field_value
+            if row is None and prev_group_by_field_value is not None:
+                # output the aggregate result of the last group
+                if cur_group_result is not None and aggregate_method == "avg":
+                    cur_group_result = int(cur_group_result[0] / cur_group_result[1])
+                if cur_group_result is None:
+                    cur_group_result = "0"
+                print_row({group_by_field: prev_group_by_field_value, f"{aggregate_method}({aggregate_field})": str(cur_group_result)}, output_schema, format_str, FIELD_PRINT_LEN)
+        clear_temp_files()
+
+                
 
     def order(self, table_name, field, order_method):
+        # check if the field is in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if field not in table_schema:
+            raise Exception(f"field {field} not in table schema")
+        # merge the sorted chunks
+        sorted_file = self._external_sort(table_name, field, order_method)
+        # print the merged file
+        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
+        print_table_header(table_schema, format_str)
+        with open(sorted_file, "r") as f:
+            csv_reader = csv.reader(f)
+            for row in csv_reader:
+                row_dict = {}
+                for field in table_schema:
+                    row_dict[field] = row[table_schema.index(field)]
+                # print the row
+                print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
+
+        # clear the Temp directory
+        clear_temp_files()
+    
+    def _external_sort(self, table_name, field, order_method) -> str:
         # check if the field is in the table schema
         table_schema = self._get_table_schema(table_name)
         if field not in table_schema:
@@ -305,22 +400,9 @@ class Relational(BaseEngine):
                     csv_writer = csv.writer(f)
                     csv_writer.writerows(sorted_table)
         # merge the sorted chunks
-        merged_file = self._merge_sorted_chunks(field, table_schema, order_method, 0)
-        # print the merged file
-        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
-        print_table_header(table_schema, format_str)
-        with open(merged_file, "r") as f:
-            csv_reader = csv.reader(f)
-            for row in csv_reader:
-                row_dict = {}
-                for field in table_schema:
-                    row_dict[field] = row[table_schema.index(field)]
-                # print the row
-                print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
+        return self._merge_sorted_chunks(field, table_schema, order_method, 0)
 
-        # clear the Temp directory
-        for file in os.listdir(f"{BASE_DIR}/Temp"):
-            os.remove(f"{BASE_DIR}/Temp/{file}")
+
         
 
     def _merge_sorted_chunks(self, field, schema, order_method, pass_num) -> str:
