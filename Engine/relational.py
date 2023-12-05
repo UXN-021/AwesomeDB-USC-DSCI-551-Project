@@ -46,6 +46,16 @@ class Relational(BaseEngine):
             csv_writer = csv.writer(f)
             csv_writer.writerow(table_schema)
         print("table created")
+
+    def drop_table(self, table_name):
+        if not self._table_exists(table_name):
+            raise Exception(f"Table {table_name} does not exist!")
+        table_storage_path = self._get_table_path(table_name)
+        # delete the table directory
+        for file in os.listdir(table_storage_path):
+            os.remove(f"{table_storage_path}/{file}")
+        os.rmdir(table_storage_path)
+        print("table dropped")
     
     def load_data(self, file_name):
         # check if file is csv

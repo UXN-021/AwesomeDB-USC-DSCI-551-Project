@@ -4,8 +4,9 @@ import re
 
 class BaseEngine():
     command_dict = {
-        "show_all": r'show tables;',
+        "list_all_tables": r'show tables;',
         "create_table": r'create table (.*?);',
+        "drop_table": r'drop table (.*?);',
         "insert_data": r'insert into (.*?) with data (.*?);',
         "delete_data": r'delete from (.*?) where (.*?);',
         "update_data": r'update in (.*?) where (.*?) and set (.*?);',
@@ -29,7 +30,7 @@ class BaseEngine():
             file_name = re.match(self.command_dict['load_data'], input_str).group(1)
             print(file_name)
             self.load_data(file_name)
-        elif re.match(self.command_dict['show_all'], input_str):
+        elif re.match(self.command_dict['list_all_tables'], input_str):
             # show all tables
             # example: show tables
             self.show_tables()
@@ -41,6 +42,11 @@ class BaseEngine():
             table_name = match.group(1)
             fields = match.group(2).split(',')
             self.create_table(table_name, fields)
+        elif re.match(self.command_dict['drop_table'], input_str):
+            # drop table
+            # example: drop table table_name
+            table_name = re.match(self.command_dict['drop_table'], input_str).group(1)
+            self.drop_table(table_name)
         elif re.match(self.command_dict['insert_data'], input_str):
             # insert data
             # example: insert into table_name with data id=4,address=east42
@@ -144,6 +150,10 @@ class BaseEngine():
 
     @abstractmethod
     def create_table(self, table_name, fields):
+        pass
+
+    @abstractmethod
+    def drop_table(self, table_name):
         pass
 
     @abstractmethod
