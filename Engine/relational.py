@@ -151,6 +151,28 @@ class Relational(BaseEngine):
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("filtering succeeded")
 
+    def order(self, table_name, field, order_method):
+        # check if the field is in the table schema
+        table_schema = self._get_table_schema(table_name)
+        if field not in table_schema:
+            raise Exception(f"field {field} not in table schema")
+        # merge the sorted chunks
+        temp_sorted_file = self._external_sort(table_name, field, order_method)
+        # print the merged file
+        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
+        print_table_header(table_schema, format_str)
+        with open(temp_sorted_file, "r") as f:
+            csv_reader = csv.reader(f)
+            for row in csv_reader:
+                row_dict = {}
+                for field in table_schema:
+                    row_dict[field] = row[table_schema.index(field)]
+                # print the row
+                print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
+        # clear the Temp directory
+        clear_temp_files()
+        print("sorting succeeded")
+
     # use right table as outter table
     def join(self, left, right, condition):
         left_schema = self._get_table_schema(left)
@@ -371,29 +393,6 @@ class Relational(BaseEngine):
                 print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
         print("group succeeded")
-
-    def order(self, table_name, field, order_method):
-        # check if the field is in the table schema
-        table_schema = self._get_table_schema(table_name)
-        if field not in table_schema:
-            raise Exception(f"field {field} not in table schema")
-        # merge the sorted chunks
-        sorted_file = self._external_sort(table_name, field, order_method)
-        # print the merged file
-        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
-        print_table_header(table_schema, format_str)
-        with open(sorted_file, "r") as f:
-            csv_reader = csv.reader(f)
-            for row in csv_reader:
-                row_dict = {}
-                for field in table_schema:
-                    row_dict[field] = row[table_schema.index(field)]
-                # print the row
-                print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
-
-        # clear the Temp directory
-        clear_temp_files()
-        print("sorting succeeded")
     
     def load_data(self, file_name):
         print("loading...")
