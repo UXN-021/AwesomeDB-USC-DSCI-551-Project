@@ -1,3 +1,4 @@
+from typing import overload
 from utils.RowElement import RowElement
 from utils.util import clear_temp_files, get_format_str, print_row, print_table_header
 from .base import BaseEngine
@@ -12,203 +13,145 @@ class Relational(BaseEngine):
     def __init__(self):
         super().__init__()
 
+    def run(self):
+        print("Relational Database selected")
+        while True:
+            input_str = input("your query>").strip()
+            if not self.parse_and_execute(input_str):
+                break
+
+    # ========================================================
+    #              ***** Query Operations *****
+    # ========================================================
+
     def show_tables(self):
         print("show tables")
 
     def create_table(self, database_name, fields):
         print("create table")
 
-    def insert_data(self, table_name, data):
-        data_fields = data.split(",")
+    def insert_data(self, table_name: str, data: list) -> None:
+        # check if the table exists
+        self._check_if_table_exists(table_name)
+        # get the table schema
         table_schema = self._get_table_schema(table_name)
-        # check if the data fields are in the table schema
+        # check if the data is valid and convert the data to a dict
         data_dict = {}
-        for data_field in data_fields:
-            field_name, field_value = data_field.split("=")
-            if field_name not in table_schema:
-                raise Exception("field name not in table schema")
+        for field_data in data:
+            # split the field_data into field_name and field_value
+            field_name, field_value = field_data.split("=")
+            # check if the field exists
+            self._check_if_field_exists_in_schema(table_schema, field_name)
             data_dict[field_name] = field_value
-            print(field_name, field_value)
-        
-        # form the new row to insert
-        row = []
-        for field in table_schema:
-            row.append(data_dict.get(field, ""))
+        # build the new row to be inserted
+        row = self._dict_to_row(table_schema, data_dict)
         # insert the new row
         self._insert_row(table_name, row)
-        
+        print("insertion succeeded")
 
-
-
-
-        
-        
-        
-
-    def delete_data(self, table_name, condition):
+    def delete_data(self, table_name: str, condition: str) -> None:
         table_schema = self._get_table_schema(table_name)
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        # iterate through all .csv file and delete rows that meet the condition
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                with open(f"{table_storage_path}/{file}", "r+") as f:
-                    csv_reader = csv.reader(f)
-                    rows = list(csv_reader)
-                    f.truncate(0)
-                with open(f"{table_storage_path}/{file}", "w") as f:
-                    csv_writer = csv.writer(f)
-                    for row in rows:
-                        if not self._row_meets_condition(table_schema, row, condition):
-                            csv_writer.writerow(row)
+        table_types = self._get_table_types(table_name)
+        # iterate through all chunks and delete rows that meet the condition
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r+") as c:
+                csv_reader = csv.reader(c)
+                rows = list(csv_reader)
+                # clear the file for replacement
+                c.truncate(0)
+            with open(chunk, "w") as c:
+                csv_writer = csv.writer(c)
+                for row in rows:
+                    # leave the rows that are not supposed to be deleted
+                    if not self._row_meets_condition(table_schema, table_types, row, condition):
+                        csv_writer.writerow(row)
+        print("deletion succeeded")
                             
-
-    
-    
-        
-
-    def _row_meets_condition(self, schema, row, condition):
-        # !!! issue: only support one condition
-        match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
-        field, op, value = match.groups()
-
-        if value.isdigit():
-            value = int(value)
-        elif value.replace('.', '', 1).isdigit():
-            value = float(value)
-
-        ops = {
-            "=": operator.eq,
-            "!=": operator.ne,
-            ">": operator.gt,
-            "<": operator.lt,
-            ">=": operator.ge,
-            "<=": operator.le,
-        }
-
-        op_func = ops.get(op)
-        if not op_func:
-            return False
-        
-        # get the index of the field
-        field_index = schema.index(field)
-        # get the value of the field
-        row_value = row[field_index]
-        if type(value) is int:
-            row_value = int(row_value)
-        elif type(value) is float:
-            if row_value == "":
-                row_value = float("-inf")
-            row_value = float(row_value)
-        
-        return op_func(row_value, value)
-        
-
-    def update_data(self, table_name, condition, data):
-        
-        
+    def update_data(self, table_name: str, condition: str, data: list) -> None:
         table_schema = self._get_table_schema(table_name)
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        # iterate through all .csv file and delete rows that meet the condition
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                with open(f"{table_storage_path}/{file}", "r+") as f:
-                    csv_reader = csv.reader(f)
-                    rows = list(csv_reader)
-                    f.truncate(0)
-                with open(f"{table_storage_path}/{file}", "w") as f:
-                    csv_writer = csv.writer(f)
-                    for row in rows:
-                        if self._row_meets_condition(table_schema, row, condition):
-                            # meet the condition, update the row
-                            data_dict = {} # key: field name, value: field value
-                            # copy all old values into data_dict
-                            old_row = row
-                            for field in table_schema:
-                                data_dict[field] = old_row[table_schema.index(field)]
-                            # update the values in data_dict
-                            update_fields = data.split(",")
-                            for update_field in update_fields:
-                                update_field_name, update_value = update_field.split("=")
-                                data_dict[update_field_name] = update_value
-                            # form the new row to insert
-                            new_row = []
-                            for field in table_schema:
-                                new_row.append(data_dict.get(field, ""))
-                            # insert the new row
-                            csv_writer.writerow(new_row)
-                        else:
-                            csv_writer.writerow(row)
+        table_types = self._get_table_types(table_name)
+        # iterate through all chunks and update rows that meet the condition
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r+") as c:
+                csv_reader = csv.reader(c)
+                rows = list(csv_reader)
+                # clear the file for replacement
+                c.truncate(0)
+            with open(chunk, "w") as c:
+                csv_writer = csv.writer(c)
+                for row in rows:
+                    # if meets the condition, update the row
+                    if self._row_meets_condition(table_schema, table_types, row, condition):
+                        # dict containing old values
+                        data_dict = self._row_to_dict(table_schema, row)
+                        # update the values in data_dict
+                        for field_data in data:
+                            field_name, field_value = field_data.split("=")
+                            data_dict[field_name] = field_value
+                        # build the new row
+                        new_row = self._dict_to_row(table_schema, data_dict)
+                        # insert the new row
+                        csv_writer.writerow(new_row)
+                    else:
+                        csv_writer.writerow(row)
+        print("update succeeded")
 
-    def projection(self, table_name, fields):
+    def projection(self, table_name: str, fields: list) -> None:
         # check if the fields are in the table schema
         table_schema = self._get_table_schema(table_name)
-        for field in fields.split(","):
-            if field not in table_schema:
-                raise Exception(f"field {field} not in table schema")
-            
+        for field in fields:
+            self._check_if_field_exists_in_schema(table_schema, field)
         # create a schema for the projection table
         projection_schema = []
-        for field in fields.split(","):
+        for field in fields:
             projection_schema.append(field)
-            
         # get the format string for printing
         format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
         # print the header
         print_table_header(projection_schema, format_str)
-        
-        # iterate through all .csv file and print the specified fields to console
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                with open(f"{table_storage_path}/{file}", "r") as f:
-                    csv_reader = csv.reader(f)
-                    for row in csv_reader:
-                        row_dict = {}
-                        for field in table_schema:
-                            row_dict[field] = row[table_schema.index(field)]
-                        # print the row
-                        print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
-                        
-        
+        # iterate through all chunks and print the specified fields to console
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r") as c:
+                csv_reader = csv.reader(c)
+                for row in csv_reader:
+                    row_dict = self._row_to_dict(table_schema, row)
+                    # print the row
+                    print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
+        print("selection succeeded")
 
     def filtering(self, table_name, fields, condition):
-        # check if the fields are in the table schema
         table_schema = self._get_table_schema(table_name)
-        for field in fields.split(","):
-            if field not in table_schema:
-                print(table_schema)
-                raise Exception(f"field {field} not in table schema")
-            
+        table_types = self._get_table_types(table_name)
+        # check if the fields are in the table schema
+        for field in fields:
+            self._check_if_field_exists_in_schema(table_schema, field)
         # create a schema for the projection table
         projection_schema = []
-        for field in fields.split(","):
+        for field in fields:
             projection_schema.append(field)
-            
         # get the format string for printing
         format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
         # print the header
         print_table_header(projection_schema, format_str)
-        
-        # iterate through all .csv file and print the specified fields to console
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                with open(f"{table_storage_path}/{file}", "r") as f:
-                    csv_reader = csv.reader(f)
-                    for row in csv_reader:
-                        # check if the row meets the condition
-                        if not self._row_meets_condition(table_schema, row, condition):
-                            continue
-                        row_dict = {}
-                        for field in table_schema:
-                            row_dict[field] = row[table_schema.index(field)]
-                        # print the row
-                        print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
+        # iterate through all chunks and print the specified fields to console
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r") as c:
+                csv_reader = csv.reader(c)
+                for row in csv_reader:
+                    # skip the rows that do not meet the condition
+                    if not self._row_meets_condition(table_schema, table_types, row, condition):
+                        continue
+                    row_dict = self._row_to_dict(table_schema, row)
+                    # print the row
+                    print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
+        print("filtering succeeded")
 
     # use right table as outter table
     def join(self, left, right, condition):
         left_schema = self._get_table_schema(left)
+        left_types = self._get_table_types(left)
         right_schema = self._get_table_schema(right)
+        right_types = self._get_table_types(right)
         # extract the fields from the condition
         match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
         left_field, op, right_field = match.groups()
@@ -249,7 +192,7 @@ class Relational(BaseEngine):
                                     left_csv_reader = csv.reader(left_f)
                                     for left_row in left_csv_reader:
                                         # check if the row meets the condition
-                                        if not self._row_meets_condition(left_schema, left_row, new_condition):
+                                        if not self._row_meets_condition(left_schema, left_types, left_row, new_condition):
                                             continue
                                         # print the row
                                         row_dict = {}
@@ -258,6 +201,7 @@ class Relational(BaseEngine):
                                         for field in right_schema:
                                             row_dict[f"{right}.{field}"] = right_row[right_schema.index(field)]
                                         print_row(row_dict, joined_schema, format_str, FIELD_PRINT_LEN)
+        print("join succeeded")
 
     def aggregate(self, table_name, aggregate_method, aggregate_field, group_by_field):
         # check if the fields are in the table schema
@@ -332,6 +276,7 @@ class Relational(BaseEngine):
                     cur_group_result = "0"
                 print_row({group_by_field: prev_group_by_field_value, f"{aggregate_method}({aggregate_field})": str(cur_group_result)}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
+        print("aggregate succeeded")
 
     def aggregate_table(self, table_name, aggregate_method, aggregate_field):
         # check if the fields are in the table schema
@@ -385,6 +330,7 @@ class Relational(BaseEngine):
         if cur_result is None:
             cur_result = "0"
         print_row({f"{aggregate_method}({aggregate_field})": str(cur_result)}, output_schema, format_str, FIELD_PRINT_LEN)
+        print("aggregate succeeded")
 
     def group(self, table_name, group_by_field):
         # check if the fields are in the table schema
@@ -419,6 +365,7 @@ class Relational(BaseEngine):
                 # output the aggregate result of the last group
                 print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
+        print("group succeeded")
 
     def order(self, table_name, field, order_method):
         # check if the field is in the table schema
@@ -441,17 +388,264 @@ class Relational(BaseEngine):
 
         # clear the Temp directory
         clear_temp_files()
+        print("sorting succeeded")
     
-    def _external_sort(self, table_name, field, order_method) -> str:
-        # check if the field is in the table schema
+    def load_data(self, file_name):
+        print("loading...")
+        csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
+        table_name = file_name.split(".")[0]
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        # create the table directory if not exists
+        if not os.path.exists(table_storage_path):
+            os.mkdir(table_storage_path)
+        else:
+            print("Table already exists!")
+            return
+        # read the first line of the csv to find the schema
+        with open(csv_file_path, "r") as f:
+            csv_reader = csv.reader(f)
+            table_schema = next(csv_reader)
+            # write the schema to the schema.txt
+            with open(f"{table_storage_path}/schema.txt", "w") as f:
+                csv_writer = csv.writer(f)
+                csv_writer.writerow(table_schema)
+        
+        # load the rest of the data to the storage using _insert_row
+        with open(csv_file_path, "r") as f:
+            csv_reader = csv.reader(f)
+            next(csv_reader) # skip the first line
+            for row in csv_reader:
+                self._insert_row(table_name, row)
+        print("loading succeeded")
+
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For value typping 
+    # ========================================================
+
+    # refrence the types of the table based on this row and write the types to the schema.txt
+    def _type_reference_from_row(self, table_name: str, row: list) -> None:
+        schema_path = f"{BASE_DIR}/Storage/Relational/{table_name}/schema.txt"
+        schema = self._get_table_schema(table_name)
+        # check if row has the same number of fields as the schema
+        if len(row) != len(schema):
+            raise Exception(f"row does not match the schema")
+        # generate a tuple of types based on the row values
+        types = []
+        for field in schema:
+            field_index = schema.index(field)
+            field_value = row[field_index]
+            if field_value.isdigit():
+                types.append(int)
+            elif field_value.replace('.', '', 1).isdigit():
+                types.append(float)
+            else:
+                types.append(str)
+        types = tuple(types)
+        # write the types to the schema.txt
+        with open(schema_path, "a") as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(types)
+    
+    # convert the value to the type
+    def _convert_to_type(self, value: str, type: type) -> int or float or str:
+        if type == int:
+            return int(value) if value != "" else 0
+        elif type == float:
+            return float(value) if value != "" else float("0.0")
+        else:
+            return value
+    
+    # return the type of the field
+    def _get_field_type_from_types(self, schema: tuple, types: tuple, field: str) -> int or float or str:
+        return types[schema.index(field)]
+    
+    # return the type of the field
+    def _get_field_type_from_table(self, table_name: str, field: str) -> int or float or str:
+        schema = self._get_table_schema(table_name)
+        types = self._get_table_types(table_name)
+        return types[schema.index(field)]
+
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For csv management
+    # ========================================================
+
+    def _get_table_path(self, table_name: str) -> str:
+        return f"{BASE_DIR}/Storage/Relational/{table_name}"
+
+    def _check_if_table_exists(self, table_name: str) -> None:
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        if not os.path.exists(table_storage_path):
+            raise Exception(f"Table {table_name} does not exist!")
+        
+    # return a tuple of field names
+    def _get_table_schema(self, table_name: str) -> tuple:
+        schema_path = f"{BASE_DIR}/Storage/Relational/{table_name}/schema.txt"
+        with open(schema_path, "r") as f:
+            csv_reader = csv.reader(f)
+            schema = next(csv_reader)
+        return tuple(schema)
+    
+    # return a tuple of types of the table
+    def _get_table_types(self, table_name: str) -> tuple:
+        schema_path = f"{BASE_DIR}/Storage/Relational/{table_name}/schema.txt"
+        with open(schema_path, "r") as f:
+            csv_reader = csv.reader(f)
+            schema = tuple(next(csv_reader, []))
+            types = tuple(next(csv_reader, []))
+        if len(schema) != len(types):
+            # get first row in chunk_0.csv
+            table_storage_path = self._get_table_path(table_name)
+            chunk_path = f"{table_storage_path}/chunk_0.csv"
+            with open(chunk_path, "r") as f:
+                csv_reader = csv.reader(f)
+                row = next(csv_reader, None)
+            if row is None:
+                raise Exception(f"Table {table_name} is empty, cannot get types")
+            # reference types from the first row
+            self._type_reference_from_row(table_name, row)
+            # get the types again
+            with open(schema_path, "r") as f:
+                csv_reader = csv.reader(f)
+                schema = tuple(next(csv_reader, []))
+                types = tuple(next(csv_reader, []))
+        return tuple(types)
+    
+    # return a list of chunk paths
+    def _get_table_chunks(self, table_name: str) -> list:
+        table_storage_path = self._get_table_path(table_name)
+        chunks = []
+        for file in os.listdir(table_storage_path):
+            if file.endswith(".csv"):
+                chunks.append(f"{table_storage_path}/{file}")
+        return chunks
+    
+    def _check_if_field_exists_in_table(self, table_name: str, field: str) -> None:
         table_schema = self._get_table_schema(table_name)
         if field not in table_schema:
-            raise Exception(f"field {field} not in table schema")
+            raise Exception(f"Field {field} does not exist in {table_name}!")
+        
+    def _check_if_field_exists_in_schema(self, schema: tuple, field: str) -> None:
+        if field not in schema:
+            raise Exception(f"Field {field} does not exist in the schema!")
+
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For chunk naming
+    # ========================================================
+
+    def _get_chunk_number(self, chunk_path: str) -> int:
+        # chunk name example: chunk_0.csv
+        return int(chunk_path.split(".")[0].split("_")[1])
+    
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For row operations
+    # ========================================================
+
+    # Given schema and the data_dict that stores the (field_name, field_value) pairs,
+    # build a row and return it
+    def _dict_to_row(self, schema: tuple, data_dict: dict) -> list:
+        row = []
+        for field in schema:
+            row.append(data_dict.get(field, ""))
+        return row
+    
+    def _row_to_dict(self, schema: tuple, row: list) -> dict:
+        row_dict = {}
+        for field in schema:
+            row_dict[field] = row[schema.index(field)]
+        return row_dict
+    
+    # insert the row into the table
+    # Assumption: 
+    # - the row is valid and matches the schema
+    # - the table exists
+    def _insert_row(self, table_name: str, row: list) -> None:
+        table_storage_path = self._get_table_path(table_name)
+        # iterate through all .csv files in this directory and find the chunk_num with max num
+        max_chunk_num = -1
+        for file in os.listdir(table_storage_path):
+            if file.endswith(".csv"):
+                chunk_num = self._get_chunk_number(file)
+                if chunk_num > max_chunk_num:
+                    max_chunk_num = chunk_num
+        # If the max_chunk_num is -1, there is no chunk already created. Create a new chunk.
+        if max_chunk_num == -1:
+            # create a new csv chunk
+            with open(f"{table_storage_path}/chunk_0.csv", "w") as f:
+                csv_writer = csv.writer(f)
+                csv_writer.writerow(row)
+                # reference types from the first row
+                self._type_reference_from_row(table_name, row)
+        else:
+            # check if the last chunk is full
+            with open(f"{table_storage_path}/chunk_{max_chunk_num}.csv", "r") as f:
+                csv_reader = csv.reader(f)
+                rows = list(csv_reader)
+                if len(rows) < CHUNK_SIZE:
+                    # last chunk is not full -> append to the last chunk
+                    with open(f"{table_storage_path}/chunk_{max_chunk_num}.csv", "a") as f:
+                        csv_writer = csv.writer(f)
+                        csv_writer.writerow(row)
+                else:
+                    # lcat chunk is full -> create a new chunk
+                    with open(f"{table_storage_path}/chunk_{max_chunk_num + 1}.csv", "w") as f:
+                        csv_writer = csv.writer(f)
+                        csv_writer.writerow(row)
+        
+    def _row_meets_condition(self, schema, types, row, condition):
+        # !!! issue: only support one condition
+        match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
+        field, op, value = match.groups()
+
+        field_type = self._get_field_type_from_types(schema, types, field)
+        value = self._convert_to_type(value, field_type)
+
+        # get the operator function
+        ops = {
+            "=": operator.eq,
+            "!=": operator.ne,
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+        }
+        op_func = ops.get(op)
+
+        # check if the operator is valid
+        if not op_func:
+            raise Exception(f"Invalid operator {op}")
+        
+        # get the index of the field
+        field_index = schema.index(field)
+        # get the value of the field
+        row_value = row[field_index]
+        row_value = self._convert_to_type(row_value, field_type)
+        # compare the row_value and value
+        return op_func(row_value, value)
+    
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For external sort
+    # ========================================================
+
+    def _external_sort(self, table_name, field, order_method) -> str:
+        table_schema = self._get_table_schema(table_name)
+        table_types = self._get_table_types(table_name)
+        # check if the field is in the table
+        self._check_if_field_exists_in_schema(table_schema, field)
         # find the index of the field
         field_index = table_schema.index(field)
         field_type = None
         # creates temporary sorted csv table in the Temp directory
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        table_storage_path = self._get_table_path(table_name)
         for file in os.listdir(table_storage_path):
             if file.endswith(".csv"):
                 # sort the csv file based on the field
@@ -486,9 +680,6 @@ class Relational(BaseEngine):
                     csv_writer.writerows(sorted_table)
         # merge the sorted chunks
         return self._merge_sorted_chunks(field, table_schema, order_method, 0)
-
-
-        
 
     def _merge_sorted_chunks(self, field, schema, order_method, pass_num) -> str:
         # get the path of the temp directory
@@ -553,82 +744,3 @@ class Relational(BaseEngine):
 
         # proceed to the next pass
         return self._merge_sorted_chunks(field, schema, order_method, pass_num + 1)
-
-
-        
-
-
-    def run(self):
-        print("Relational Database selected")
-        while True:
-            input_str = input("your query>").strip()
-            if not self.parse_and_execute(input_str):
-                break
-    
-    # return a tuple
-    def _get_table_schema(self, table_name):
-        schema_path = f"{BASE_DIR}/Storage/Relational/{table_name}/schema.txt"
-        with open(schema_path, "r") as f:
-            csv_reader = csv.reader(f)
-            schema = next(csv_reader)
-        return tuple(schema)
-    
-    def load_data(self, file_name):
-        csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
-        table_name = file_name.split(".")[0]
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        # create the table directory if not exists
-        if not os.path.exists(table_storage_path):
-            os.mkdir(table_storage_path)
-            print("Directory created:", table_storage_path)
-        else:
-            print("Table already exists!")
-            return
-        # read the first line of the csv to find the schema
-        with open(csv_file_path, "r") as f:
-            csv_reader = csv.reader(f)
-            table_schema = next(csv_reader)
-            # write the schema to the schema.txt
-            with open(f"{table_storage_path}/schema.txt", "w") as f:
-                csv_writer = csv.writer(f)
-                csv_writer.writerow(table_schema)
-        
-        # load the rest of the data to the storage using _insert_row
-        with open(csv_file_path, "r") as f:
-            csv_reader = csv.reader(f)
-            next(csv_reader) # skip the first line
-            for row in csv_reader:
-                self._insert_row(table_name, row)
-
-
-    def _insert_row(self, table_name, row):
-        # insert the new row
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        # iterate through all .csv files in this directory and find the chunk_num with max num
-        max_chunk_num = -1
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                chunk_num = int(file.split(".")[0].split("_")[1])
-                if chunk_num > max_chunk_num:
-                    max_chunk_num = chunk_num
-        if max_chunk_num == -1:
-            # create a new csv chunk
-            with open(f"{table_storage_path}/chunk_0.csv", "w") as f:
-                csv_writer = csv.writer(f)
-                csv_writer.writerow(row)
-        else:
-            # check if the last chunk is full
-            with open(f"{table_storage_path}/chunk_{max_chunk_num}.csv", "r") as f:
-                csv_reader = csv.reader(f)
-                rows = list(csv_reader)
-                if len(rows) < CHUNK_SIZE:
-                    # append to the last chunk
-                    with open(f"{table_storage_path}/chunk_{max_chunk_num}.csv", "a") as f:
-                        csv_writer = csv.writer(f)
-                        csv_writer.writerow(row)
-                else:
-                    # create a new chunk
-                    with open(f"{table_storage_path}/chunk_{max_chunk_num + 1}.csv", "w") as f:
-                        csv_writer = csv.writer(f)
-                        csv_writer.writerow(row)
-

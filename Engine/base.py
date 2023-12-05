@@ -47,7 +47,7 @@ class BaseEngine():
             # example: insert into table_name with data id=4,address=east42
             kwargs = re.match(self.command_dict['insert_data'], input_str)
             table_name = kwargs.group(1)
-            data = kwargs.group(2)
+            data = kwargs.group(2).split(',')
             self.insert_data(table_name, data)
         elif re.match(self.command_dict['delete_data'], input_str):
             # delete data
@@ -62,20 +62,20 @@ class BaseEngine():
             kwargs = re.match(self.command_dict['update_data'], input_str)
             table_name = kwargs.group(1)
             condition = kwargs.group(2)
-            data = kwargs.group(3)
+            data = kwargs.group(3).split(',')
             self.update_data(table_name, condition, data)
         elif re.match(self.command_dict['projection'], input_str):
             # projection
             # example: show column id,name from table_name
             kwargs = re.match(self.command_dict['projection'], input_str)
-            fields = kwargs.group(1)
+            fields = kwargs.group(1).split(',')
             table_name = kwargs.group(2)
             self.projection(table_name, fields)
         elif re.match(self.command_dict['filtering'], input_str):
             # filtering
             # example: show data id,name from table_name where id=4
             kwargs = re.match(self.command_dict['filtering'], input_str)
-            fields = kwargs.group(1)
+            fields = kwargs.group(1).split(',')
             table_name = kwargs.group(2)
             condition = kwargs.group(3)
             self.filtering(table_name, fields, condition)
