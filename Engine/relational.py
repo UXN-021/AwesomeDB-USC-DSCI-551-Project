@@ -154,7 +154,7 @@ class Relational(BaseEngine):
                 csv_writer = csv.writer(c)
                 for typed_row in typed_rows:
                     # if meets the condition, update the row
-                    if self._row_meets_condition(table_schema, table_types, typed_row, condition):
+                    if self._row_meets_condition(table_schema, typed_row, condition):
                         # dict containing old values
                         data_dict = self._row_to_dict(table_schema, typed_row)
                         # update the values in data_dict

@@ -11,7 +11,7 @@ def main():
     elif input_str == "exit":
         exit()
     else:
-        print("Invalid input. Please try again.")
+        print("Invalid input. Please type 'relational', 'nosql' or 'exit'")
         main()
         
 if __name__ == "__main__":

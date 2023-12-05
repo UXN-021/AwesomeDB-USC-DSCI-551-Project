@@ -37,4 +37,7 @@ def print_row(row_dict, schema, format_str, max_length):
 
 def clear_temp_files():
     for file in os.listdir(f"{BASE_DIR}/Temp"):
+            # keep the .gitkeep file
+            if file.endswith(".gitkeep") or file.endswith(".keep"):
+                continue
             os.remove(f"{BASE_DIR}/Temp/{file}")
