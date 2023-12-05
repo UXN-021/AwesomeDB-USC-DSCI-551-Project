@@ -36,7 +36,7 @@ class Relational(BaseEngine):
 
     def create_table(self, table_name, fields) -> bool:
         if self._table_exists(table_name):
-            print(f"Table {table_name} already exists!")
+            print(f"Cannot load dataset. Table {table_name} already exists!")
             return False
         table_schema = tuple(fields)
         table_storage_path = self._get_table_path(table_name)
