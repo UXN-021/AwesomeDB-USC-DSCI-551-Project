@@ -29,6 +29,34 @@ class Relational(BaseEngine):
 
     def create_table(self, database_name, fields):
         print("create table")
+    
+    def load_data(self, file_name):
+        print("loading...")
+        csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
+        table_name = file_name.split(".")[0]
+        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
+        # create the table directory if not exists
+        if not os.path.exists(table_storage_path):
+            os.mkdir(table_storage_path)
+        else:
+            print("Table already exists!")
+            return
+        # read the first line of the csv to find the schema
+        with open(csv_file_path, "r") as f:
+            csv_reader = csv.reader(f)
+            table_schema = next(csv_reader)
+            # write the schema to the schema.txt
+            with open(f"{table_storage_path}/schema.txt", "w") as f:
+                csv_writer = csv.writer(f)
+                csv_writer.writerow(table_schema)
+        
+        # load the rest of the data to the storage using _insert_row
+        with open(csv_file_path, "r") as f:
+            csv_reader = csv.reader(f)
+            next(csv_reader) # skip the first line
+            for row in csv_reader:
+                self._insert_row(table_name, row)
+        print("loading succeeded")
 
     def insert_data(self, table_name: str, data: list) -> None:
         # check if the table exists
@@ -349,14 +377,12 @@ class Relational(BaseEngine):
         print("aggregate succeeded")
 
     def group(self, table_name, group_by_field):
-        # check if the fields are in the table schema
         table_schema = self._get_table_schema(table_name)
-        if group_by_field not in table_schema:
-            raise Exception(f"field {group_by_field} not in table schema")
-        # get the index of the fields
-        group_by_field_index = table_schema.index(group_by_field)
+        table_types = self._get_table_types(table_name)
+        # check if the fields are in the table schema
+        self._check_if_field_exists_in_schema(table_schema, group_by_field)
         # sort the table by group_by_field
-        sorted_file = self._external_sort(table_name, group_by_field, "asc")
+        temp_sorted_file = self._external_sort(table_name, group_by_field, "asc")
         # output schema
         output_schema = (group_by_field,)
         # get the format string for printing
@@ -364,52 +390,25 @@ class Relational(BaseEngine):
         # print the header
         print_table_header(output_schema, format_str)
         # iterate through the sorted table and output the aggregate result
-        with open(sorted_file, "r") as f:
+        with open(temp_sorted_file, "r") as f:
             csv_reader = csv.reader(f)
-            row = next(csv_reader, None)
-            prev_group_by_field_value = None
-            while row is not None:
-                # get the group_by_field value
-                curr_group_by_field_value = row[group_by_field_index]
-                if curr_group_by_field_value != prev_group_by_field_value and prev_group_by_field_value is not None:
-                    # group_by_field value changes, output the aggregate result of the previous group
-                    print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
+            typed_row = self._read_typed_row(table_types, csv_reader)
+            pre_group_by_field_value = None
+            while typed_row is not None:
+                # get the group_by_field value of the current typed row
+                cur_group_by_field_value = self._get_row_value(table_schema, typed_row, group_by_field)
+                # if the group_by_field value changes, output the aggregate result of the previous group
+                if cur_group_by_field_value != pre_group_by_field_value and pre_group_by_field_value is not None:
+                    print_row({group_by_field: pre_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
                 # get the next row
-                row = next(csv_reader, None)
-                prev_group_by_field_value = curr_group_by_field_value
-            if row is None and prev_group_by_field_value is not None:
-                # output the aggregate result of the last group
-                print_row({group_by_field: prev_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
+                typed_row = self._read_typed_row(table_types, csv_reader)
+                # update the prev_group_by_field_value
+                pre_group_by_field_value = cur_group_by_field_value
+            # output the aggregate result of the last group
+            if typed_row is None and pre_group_by_field_value is not None:
+                print_row({group_by_field: pre_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
         print("group succeeded")
-    
-    def load_data(self, file_name):
-        print("loading...")
-        csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
-        table_name = file_name.split(".")[0]
-        table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
-        # create the table directory if not exists
-        if not os.path.exists(table_storage_path):
-            os.mkdir(table_storage_path)
-        else:
-            print("Table already exists!")
-            return
-        # read the first line of the csv to find the schema
-        with open(csv_file_path, "r") as f:
-            csv_reader = csv.reader(f)
-            table_schema = next(csv_reader)
-            # write the schema to the schema.txt
-            with open(f"{table_storage_path}/schema.txt", "w") as f:
-                csv_writer = csv.writer(f)
-                csv_writer.writerow(table_schema)
-        
-        # load the rest of the data to the storage using _insert_row
-        with open(csv_file_path, "r") as f:
-            csv_reader = csv.reader(f)
-            next(csv_reader) # skip the first line
-            for row in csv_reader:
-                self._insert_row(table_name, row)
-        print("loading succeeded")
 
     # ========================================================
     #                  ***** Helpers *****
