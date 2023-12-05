@@ -4,7 +4,8 @@ Storage/Relational/*
 ToBeLoaded/*
 projEnv
 Temp/*
-
+!.gitkeep
+!.keep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
