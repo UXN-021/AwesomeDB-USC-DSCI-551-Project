@@ -128,7 +128,7 @@ class BaseEngine():
                 return True
             # check if aggregation method is valid
             if aggregation_method not in ['max', 'min', 'sum', 'avg', 'count']:
-                print("aggregation method must be max, min, sum or avg")
+                print("aggregation method must be max, min, sum, avg or count")
                 return True
             table_name = kwargs.group(2)
             group_field = kwargs.group(3)
