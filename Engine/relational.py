@@ -101,7 +101,6 @@ class Relational(BaseEngine):
             return False
         # get the table schema
         table_schema = self._get_table_schema(table_name)
-        table_types = self._get_table_types(table_name)
         # check if the data is valid and convert the data to a dict
         data_dict = {}
         for field_data in data:
@@ -111,8 +110,6 @@ class Relational(BaseEngine):
             if not self._field_exists_in_schema(table_schema, field_name):
                 print(f"Field {field_name} does not exist.")
                 return False
-            # convert the field_value to the type specified in the schema
-            field_value = self._convert_to_type(field_value, self._get_field_type_from_types(table_schema, table_types, field_name))
             data_dict[field_name] = field_value
         # build the new row to be inserted
         row = self._dict_to_row(table_schema, data_dict)
@@ -686,6 +683,13 @@ class Relational(BaseEngine):
                 csv_writer.writerow(row)
                 # reference types from the first row
                 self._type_reference_from_row(table_name, row)
+                # print a warning message
+                warning_msg = """
+*** Warning: The types of the table are referenced from 
+*** the first row of the table. The first row cannot 
+*** contain empty values
+"""
+                print(warning_msg)
         else:
             # check if the last chunk is full
             with open(f"{table_storage_path}/chunk_{max_chunk_num}.csv", "r") as f:
