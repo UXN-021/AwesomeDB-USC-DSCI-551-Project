@@ -23,7 +23,7 @@ class Relational(BaseEngine):
     #              ***** Query Operations *****
     # ========================================================
 
-    def show_tables(self):
+    def show_tables(self) -> bool:
         # print the header
         header_schema = ("tables",)
         format_str = get_format_str(header_schema, FIELD_PRINT_LEN)
@@ -32,10 +32,12 @@ class Relational(BaseEngine):
         for file in os.listdir(f"{BASE_DIR}/Storage/Relational"):
             if os.path.isdir(f"{BASE_DIR}/Storage/Relational/{file}"):
                 print_row({"tables": file}, header_schema, format_str, FIELD_PRINT_LEN)
+        return True
 
-    def create_table(self, table_name, fields):
+    def create_table(self, table_name, fields) -> bool:
         if self._table_exists(table_name):
-            raise Exception(f"Table {table_name} already exists!")
+            print(f"Table {table_name} already exists!")
+            return False
         table_schema = tuple(fields)
         table_storage_path = self._get_table_path(table_name)
         # create the table directory
@@ -45,21 +47,25 @@ class Relational(BaseEngine):
             csv_writer = csv.writer(f)
             csv_writer.writerow(table_schema)
         print("table created")
+        return True
 
-    def drop_table(self, table_name):
+    def drop_table(self, table_name) -> bool:
         if not self._table_exists(table_name):
-            raise Exception(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!")
+            return False
         table_storage_path = self._get_table_path(table_name)
         # delete the table directory
         for file in os.listdir(table_storage_path):
             os.remove(f"{table_storage_path}/{file}")
         os.rmdir(table_storage_path)
         print("table dropped")
+        return True
     
-    def load_data(self, file_name):
+    def load_data(self, file_name) -> bool:
         # check if file is csv
         if not file_name.endswith(".csv"):
-            raise Exception(f"File {file_name} is not a csv file")
+            print(f"File {file_name} is not a csv file")
+            return False
         print("loading...")
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
@@ -86,11 +92,13 @@ class Relational(BaseEngine):
             for row in csv_reader:
                 self._insert_row(table_name, row)
         print("loading succeeded")
+        return True
 
-    def insert_data(self, table_name: str, data: list) -> None:
+    def insert_data(self, table_name: str, data: list) -> bool:
         # check if the table exists
         if not self._table_exists(table_name):
-            raise Exception(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!")
+            return False
         # get the table schema
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
@@ -100,7 +108,9 @@ class Relational(BaseEngine):
             # split the field_data into field_name and field_value
             field_name, field_value = field_data.split("=")
             # check if the field exists
-            self._check_if_field_exists_in_schema(table_schema, field_name)
+            if not self._field_exists_in_schema(table_schema, field_name):
+                print(f"Field {field_name} does not exist.")
+                return False
             # convert the field_value to the type specified in the schema
             field_value = self._convert_to_type(field_value, self._get_field_type_from_types(table_schema, table_types, field_name))
             data_dict[field_name] = field_value
@@ -109,8 +119,9 @@ class Relational(BaseEngine):
         # insert the new row
         self._insert_row(table_name, row)
         print("insertion succeeded")
+        return True
 
-    def delete_data(self, table_name: str, condition: str) -> None:
+    def delete_data(self, table_name: str, condition: str) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         # iterate through all chunks and delete rows that meet the condition
@@ -127,8 +138,9 @@ class Relational(BaseEngine):
                     if not self._row_meets_condition(table_schema, typed_row, condition):
                         csv_writer.writerow(typed_row)
         print("deletion succeeded")
+        return True
                             
-    def update_data(self, table_name: str, condition: str, data: list) -> None:
+    def update_data(self, table_name: str, condition: str, data: list) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         # iterate through all chunks and update rows that meet the condition
@@ -157,8 +169,9 @@ class Relational(BaseEngine):
                     else:
                         csv_writer.writerow(typed_row)
         print("update succeeded")
+        return True
 
-    def projection(self, table_name: str, fields: list) -> None:
+    def projection(self, table_name: str, fields: list) -> bool:
         table_schema = self._get_table_schema(table_name)
         # create a schema for the projection table
         projection_schema = []
@@ -167,7 +180,9 @@ class Relational(BaseEngine):
         else:
             # check if the fields are in the table schema
             for field in fields:
-                self._check_if_field_exists_in_schema(table_schema, field)
+                if not self._field_exists_in_schema(table_schema, field):
+                    print(f"Field {field} does not exist.")
+                    return False
             # add the fields to the projection schema
             for field in fields:
                 projection_schema.append(field)
@@ -184,8 +199,9 @@ class Relational(BaseEngine):
                     # print the row
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("selection succeeded")
+        return True
 
-    def filtering(self, table_name: str, fields: list, condition: str) -> None:
+    def filtering(self, table_name: str, fields: list, condition: str) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         projection_schema = []
@@ -194,7 +210,9 @@ class Relational(BaseEngine):
         else:
             # check if the fields are in the table schema
             for field in fields:
-                self._check_if_field_exists_in_schema(table_schema, field)
+                if not self._field_exists_in_schema(table_schema, field):
+                    print(f"Field {field} does not exist.")
+                    return False
             # create a schema for the projection table
             for field in fields:
                 projection_schema.append(field)
@@ -215,12 +233,14 @@ class Relational(BaseEngine):
                     # print the row
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("filtering succeeded")
+        return True
 
-    def order(self, table_name: str, field: str, order_method: str) -> None:
+    def order(self, table_name: str, field: str, order_method: str) -> bool:
         # check if the field is in the table schema
         table_schema = self._get_table_schema(table_name)
         if field not in table_schema:
-            raise Exception(f"field {field} not in table schema")
+            print(f"field {field} not in table schema")
+            return False
         # merge the sorted chunks
         temp_sorted_file = self._external_sort(table_name, field, order_method)
         # print the merged file
@@ -237,9 +257,10 @@ class Relational(BaseEngine):
         # clear the Temp directory
         clear_temp_files()
         print("sorting succeeded")
+        return True
 
     # Using Nested Loop Join
-    def join(self, left: str, right: str, condition: str) -> None:
+    def join(self, left: str, right: str, condition: str) -> bool:
         left_schema = self._get_table_schema(left)
         left_types = self._get_table_types(left)
         right_schema = self._get_table_schema(right)
@@ -247,16 +268,22 @@ class Relational(BaseEngine):
         # extract the fields from the condition
         match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
         if match is None:
-            raise Exception(f"invalid condition {condition}")
+            print(f"invalid condition {condition}")
+            return False
         left_field, op, right_field = match.groups()
         # check if these fields exist
-        self._check_if_field_exists_in_schema(left_schema, left_field)
-        self._check_if_field_exists_in_schema(right_schema, right_field)
+        if not self._field_exists_in_schema(left_schema, left_field):
+            print(f"Field {left_field} does not exist.")
+            return False
+        if not self._field_exists_in_schema(right_schema, right_field):
+            print(f"Field {right_field} does not exist.")
+            return False
         # check if the types of the fields are the same
         left_field_type = self._get_field_type_from_types(left_schema, left_types, left_field)
         right_field_type = self._get_field_type_from_types(right_schema, right_types, right_field)
         if left_field_type != right_field_type:
-            raise Exception(f"field {left_field} and field {right_field} have different types")
+            print(f"field {left_field} and field {right_field} have different types")
+            return False
         # joined schema
         joined_schema = []
         for field in left_schema:
@@ -297,13 +324,18 @@ class Relational(BaseEngine):
                                     row_dict[f"{right}.{field}"] = self._get_row_value(right_schema, typed_right_row, field)
                                 print_row(row_dict, joined_schema, format_str, FIELD_PRINT_LEN)
         print("join succeeded")
+        return True
 
-    def aggregate(self, table_name, aggregate_method, aggregate_field, group_by_field):
+    def aggregate(self, table_name, aggregate_method, aggregate_field, group_by_field) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         # check if the fields are in the table schema
-        self._check_if_field_exists_in_schema(table_schema, group_by_field)
-        self._check_if_field_exists_in_schema(table_schema, aggregate_field)
+        if not self._field_exists_in_schema(table_schema, group_by_field):
+            print(f"Field {group_by_field} does not exist.")
+            return False
+        if not self._field_exists_in_schema(table_schema, aggregate_field):
+            print(f"Field {aggregate_field} does not exist.")
+            return False
         # sort the table by group_by_field
         temp_sorted_file = self._external_sort(table_name, group_by_field, "asc")
         # output schema
@@ -365,12 +397,15 @@ class Relational(BaseEngine):
                 print_row({group_by_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": str(cur_group_result)}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
         print("aggregate succeeded")
+        return True
 
-    def aggregate_table(self, table_name, aggregate_method, aggregate_field):
+    def aggregate_table(self, table_name, aggregate_method, aggregate_field) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         # check if the fields are in the table schema
-        self._check_if_field_exists_in_schema(table_schema, aggregate_field)
+        if not self._field_exists_in_schema(table_schema, aggregate_field):
+            print(f"Field {aggregate_field} does not exist.")
+            return False
         # output schema
         output_schema = (f"{aggregate_method}({aggregate_field})",)
         # get the format string for printing
@@ -412,12 +447,15 @@ class Relational(BaseEngine):
             cur_result = "0"
         print_row({f"{aggregate_method}({aggregate_field})": str(cur_result)}, output_schema, format_str, FIELD_PRINT_LEN)
         print("aggregate succeeded")
+        return True
 
-    def group(self, table_name, group_by_field):
+    def group(self, table_name, group_by_field) -> bool:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
         # check if the fields are in the table schema
-        self._check_if_field_exists_in_schema(table_schema, group_by_field)
+        if not self._field_exists_in_schema(table_schema, group_by_field):
+            print(f"Field {group_by_field} does not exist.")
+            return False
         # sort the table by group_by_field
         temp_sorted_file = self._external_sort(table_name, group_by_field, "asc")
         # output schema
@@ -446,6 +484,7 @@ class Relational(BaseEngine):
                 print_row({group_by_field: pre_group_by_field_value}, output_schema, format_str, FIELD_PRINT_LEN)
         clear_temp_files()
         print("group succeeded")
+        return True
 
     # ========================================================
     #                  ***** Helpers *****
@@ -588,9 +627,10 @@ class Relational(BaseEngine):
         if field not in table_schema:
             raise Exception(f"Field {field} does not exist in {table_name}!")
         
-    def _check_if_field_exists_in_schema(self, schema: tuple, field: str) -> None:
+    def _field_exists_in_schema(self, schema: tuple, field: str) -> bool:
         if field not in schema:
-            raise Exception(f"Field {field} does not exist in the schema!")
+            return False
+        return True
 
     # ========================================================
     #                  ***** Helpers *****
