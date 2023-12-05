@@ -159,14 +159,18 @@ class Relational(BaseEngine):
         print("update succeeded")
 
     def projection(self, table_name: str, fields: list) -> None:
-        # check if the fields are in the table schema
         table_schema = self._get_table_schema(table_name)
-        for field in fields:
-            self._check_if_field_exists_in_schema(table_schema, field)
         # create a schema for the projection table
         projection_schema = []
-        for field in fields:
-            projection_schema.append(field)
+        if fields == ['*']:
+            projection_schema = table_schema
+        else:
+            # check if the fields are in the table schema
+            for field in fields:
+                self._check_if_field_exists_in_schema(table_schema, field)
+            # add the fields to the projection schema
+            for field in fields:
+                projection_schema.append(field)
         # get the format string for printing
         format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
         # print the header
@@ -181,34 +185,19 @@ class Relational(BaseEngine):
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("selection succeeded")
 
-    def show_all_data(self, table_name: str) -> None:
-        # get the table schema
-        table_schema = self._get_table_schema(table_name)
-        # get the format string for printing
-        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
-        # print the header
-        print_table_header(table_schema, format_str)
-        # iterate through all chunks and print all fields to console
-        for chunk in self._get_table_chunks(table_name):
-            with open(chunk, "r") as c:
-                csv_reader = csv.reader(c)
-                typed_rows = self._read_typed_rows(table_schema, csv_reader)
-                for typed_row in typed_rows:
-                    row_dict = self._row_to_dict(table_schema, typed_row)
-                    # print the row
-                    print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
-        print("show all data succeeded")
-
     def filtering(self, table_name: str, fields: list, condition: str) -> None:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
-        # check if the fields are in the table schema
-        for field in fields:
-            self._check_if_field_exists_in_schema(table_schema, field)
-        # create a schema for the projection table
         projection_schema = []
-        for field in fields:
-            projection_schema.append(field)
+        if fields == ['*']:
+            projection_schema = table_schema
+        else:
+            # check if the fields are in the table schema
+            for field in fields:
+                self._check_if_field_exists_in_schema(table_schema, field)
+            # create a schema for the projection table
+            for field in fields:
+                projection_schema.append(field)
         # get the format string for printing
         format_str = get_format_str(projection_schema, FIELD_PRINT_LEN)
         # print the header
