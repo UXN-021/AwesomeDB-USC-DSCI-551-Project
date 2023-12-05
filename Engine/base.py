@@ -73,9 +73,12 @@ class BaseEngine():
             # projection
             # example: show column id,name from table_name
             kwargs = re.match(self.command_dict['projection'], input_str)
-            fields = kwargs.group(1).split(',')
-            table_name = kwargs.group(2)
-            self.projection(table_name, fields)
+            if kwargs.group(1) == '*':
+                self.show_all_data(kwargs.group(2))
+            else:
+                fields = kwargs.group(1).split(',')
+                table_name = kwargs.group(2)
+                self.projection(table_name, fields)
         elif re.match(self.command_dict['filtering'], input_str):
             # filtering
             # example: show data id,name from table_name where id=4
@@ -170,6 +173,10 @@ class BaseEngine():
 
     @abstractmethod
     def projection(self, table_name, fields):
+        pass
+
+    @abstractmethod
+    def show_all_data(self, table_name):
         pass
 
     @abstractmethod

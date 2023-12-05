@@ -1,4 +1,3 @@
-from typing import overload
 from utils.RowElement import RowElement
 from utils.util import clear_temp_files, get_format_str, print_row, print_table_header
 from .base import BaseEngine
@@ -181,6 +180,24 @@ class Relational(BaseEngine):
                     # print the row
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("selection succeeded")
+
+    def show_all_data(self, table_name: str) -> None:
+        # get the table schema
+        table_schema = self._get_table_schema(table_name)
+        # get the format string for printing
+        format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
+        # print the header
+        print_table_header(table_schema, format_str)
+        # iterate through all chunks and print all fields to console
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r") as c:
+                csv_reader = csv.reader(c)
+                typed_rows = self._read_typed_rows(table_schema, csv_reader)
+                for typed_row in typed_rows:
+                    row_dict = self._row_to_dict(table_schema, typed_row)
+                    # print the row
+                    print_row(row_dict, table_schema, format_str, FIELD_PRINT_LEN)
+        print("show all data succeeded")
 
     def filtering(self, table_name: str, fields: list, condition: str) -> None:
         table_schema = self._get_table_schema(table_name)
