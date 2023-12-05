@@ -36,12 +36,11 @@ class BaseEngine():
         elif re.match(self.command_dict['create_table'], input_str):
             # create table
             # example: create table table_name(field1,field2,field3)
-            kwargs = re.match(self.command_dict['create_table'], input_str).group(1)
-            table_schema = re.match(r'(.*?)\((.*?)\)', kwargs)
-            database_name = table_schema.group(1)  # xxx.csv
-            print(database_name)
-            field_str = table_schema.group(2)  # "xxx,xxx,xxx"
-            self.create_table(database_name, field_str)
+            kwargs = re.match(self.command_dict['create_table'], input_str)
+            match = re.match(r'(.*?)\((.*?)\)', kwargs.group(1))
+            table_name = match.group(1)
+            fields = match.group(2).split(',')
+            self.create_table(table_name, fields)
         elif re.match(self.command_dict['insert_data'], input_str):
             # insert data
             # example: insert into table_name with data id=4,address=east42
@@ -144,7 +143,7 @@ class BaseEngine():
         pass
 
     @abstractmethod
-    def create_table(self, database_name, fields):
+    def create_table(self, table_name, fields):
         pass
 
     @abstractmethod

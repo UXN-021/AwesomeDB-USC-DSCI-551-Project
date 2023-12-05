@@ -25,12 +25,32 @@ class Relational(BaseEngine):
     # ========================================================
 
     def show_tables(self):
-        print("show tables")
+        # print the header
+        header_schema = ("tables",)
+        format_str = get_format_str(header_schema, FIELD_PRINT_LEN)
+        print_table_header(header_schema, format_str)
+        # list the name of directories in Storage/Relational
+        for file in os.listdir(f"{BASE_DIR}/Storage/Relational"):
+            if os.path.isdir(f"{BASE_DIR}/Storage/Relational/{file}"):
+                print_row({"tables": file}, header_schema, format_str, FIELD_PRINT_LEN)
 
-    def create_table(self, database_name, fields):
-        print("create table")
+    def create_table(self, table_name, fields):
+        if self._table_exists(table_name):
+            raise Exception(f"Table {table_name} already exists!")
+        table_schema = tuple(fields)
+        table_storage_path = self._get_table_path(table_name)
+        # create the table directory
+        os.mkdir(table_storage_path)
+        # create the schema.txt
+        with open(f"{table_storage_path}/schema.txt", "w") as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(table_schema)
+        print("table created")
     
     def load_data(self, file_name):
+        # check if file is csv
+        if not file_name.endswith(".csv"):
+            raise Exception(f"File {file_name} is not a csv file")
         print("loading...")
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
@@ -60,7 +80,8 @@ class Relational(BaseEngine):
 
     def insert_data(self, table_name: str, data: list) -> None:
         # check if the table exists
-        self._check_if_table_exists(table_name)
+        if not self._table_exists(table_name):
+            raise Exception(f"Table {table_name} does not exist!")
         # get the table schema
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
@@ -490,10 +511,11 @@ class Relational(BaseEngine):
     def _get_table_path(self, table_name: str) -> str:
         return f"{BASE_DIR}/Storage/Relational/{table_name}"
 
-    def _check_if_table_exists(self, table_name: str) -> None:
+    def _table_exists(self, table_name: str) -> bool:
         table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"
         if not os.path.exists(table_storage_path):
-            raise Exception(f"Table {table_name} does not exist!")
+            return False
+        return True
         
     # return a tuple of field names
     def _get_table_schema(self, table_name: str) -> tuple:
