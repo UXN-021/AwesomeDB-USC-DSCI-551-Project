@@ -2,6 +2,9 @@ import os
 
 from config import BASE_DIR
 
+# ========================================================
+#                   For printing tables
+# ========================================================
 
 def get_format_str(schema, max_length=10):
     format_str = ""
@@ -26,6 +29,11 @@ def print_row(row_dict, schema, format_str, max_length):
         else:
             row_list.append(field_value)
     print(format_str.format(*row_list))
+
+
+# ========================================================
+#                   For the temp folder
+# ========================================================
 
 def clear_temp_files():
     for file in os.listdir(f"{BASE_DIR}/Temp"):

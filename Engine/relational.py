@@ -2,7 +2,7 @@ from typing import overload
 from utils.RowElement import RowElement
 from utils.util import clear_temp_files, get_format_str, print_row, print_table_header
 from .base import BaseEngine
-from config import BASE_DIR, CHUNK_SIZE, FIELD_PRINT_LEN
+from config import BASE_DIR, CHUNK_SIZE, FIELD_PRINT_LEN, TEMP_DIR
 import os
 import re
 import operator
@@ -35,6 +35,7 @@ class Relational(BaseEngine):
         self._check_if_table_exists(table_name)
         # get the table schema
         table_schema = self._get_table_schema(table_name)
+        table_types = self._get_table_types(table_name)
         # check if the data is valid and convert the data to a dict
         data_dict = {}
         for field_data in data:
@@ -42,6 +43,8 @@ class Relational(BaseEngine):
             field_name, field_value = field_data.split("=")
             # check if the field exists
             self._check_if_field_exists_in_schema(table_schema, field_name)
+            # convert the field_value to the type specified in the schema
+            field_value = self._convert_to_type(field_value, self._get_field_type_from_types(table_schema, table_types, field_name))
             data_dict[field_name] = field_value
         # build the new row to be inserted
         row = self._dict_to_row(table_schema, data_dict)
@@ -56,15 +59,15 @@ class Relational(BaseEngine):
         for chunk in self._get_table_chunks(table_name):
             with open(chunk, "r+") as c:
                 csv_reader = csv.reader(c)
-                rows = list(csv_reader)
+                typed_rows = self._read_typed_rows(table_types, csv_reader)
                 # clear the file for replacement
                 c.truncate(0)
             with open(chunk, "w") as c:
                 csv_writer = csv.writer(c)
-                for row in rows:
+                for typed_row in typed_rows:
                     # leave the rows that are not supposed to be deleted
-                    if not self._row_meets_condition(table_schema, table_types, row, condition):
-                        csv_writer.writerow(row)
+                    if not self._row_meets_condition(table_schema, typed_row, condition):
+                        csv_writer.writerow(typed_row)
         print("deletion succeeded")
                             
     def update_data(self, table_name: str, condition: str, data: list) -> None:
@@ -74,26 +77,27 @@ class Relational(BaseEngine):
         for chunk in self._get_table_chunks(table_name):
             with open(chunk, "r+") as c:
                 csv_reader = csv.reader(c)
-                rows = list(csv_reader)
+                typed_rows = self._read_typed_rows(table_types, csv_reader)
                 # clear the file for replacement
                 c.truncate(0)
             with open(chunk, "w") as c:
                 csv_writer = csv.writer(c)
-                for row in rows:
+                for typed_row in typed_rows:
                     # if meets the condition, update the row
-                    if self._row_meets_condition(table_schema, table_types, row, condition):
+                    if self._row_meets_condition(table_schema, table_types, typed_row, condition):
                         # dict containing old values
-                        data_dict = self._row_to_dict(table_schema, row)
+                        data_dict = self._row_to_dict(table_schema, typed_row)
                         # update the values in data_dict
                         for field_data in data:
                             field_name, field_value = field_data.split("=")
+                            field_value = self._convert_to_type(field_value, self._get_field_type_from_types(table_schema, table_types, field_name))
                             data_dict[field_name] = field_value
                         # build the new row
                         new_row = self._dict_to_row(table_schema, data_dict)
                         # insert the new row
                         csv_writer.writerow(new_row)
                     else:
-                        csv_writer.writerow(row)
+                        csv_writer.writerow(typed_row)
         print("update succeeded")
 
     def projection(self, table_name: str, fields: list) -> None:
@@ -137,11 +141,12 @@ class Relational(BaseEngine):
         for chunk in self._get_table_chunks(table_name):
             with open(chunk, "r") as c:
                 csv_reader = csv.reader(c)
-                for row in csv_reader:
+                typed_rows = self._read_typed_rows(table_types, csv_reader)
+                for typed_row in typed_rows:
                     # skip the rows that do not meet the condition
-                    if not self._row_meets_condition(table_schema, table_types, row, condition):
+                    if not self._row_meets_condition(table_schema, typed_row, condition):
                         continue
-                    row_dict = self._row_to_dict(table_schema, row)
+                    row_dict = self._row_to_dict(table_schema, typed_row)
                     # print the row
                     print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN)
         print("filtering succeeded")
@@ -466,6 +471,28 @@ class Relational(BaseEngine):
         schema = self._get_table_schema(table_name)
         types = self._get_table_types(table_name)
         return types[schema.index(field)]
+    
+    def _convert_row_to_typed_row(self, types: tuple, row: list) -> list:
+        typed_row = []
+        for i in range(len(row)):
+            field_value = row[i]
+            field_type = types[i]
+            typed_row.append(self._convert_to_type(field_value, field_type))
+        return typed_row
+    
+    def _read_typed_row(self, types: tuple, reader: csv.reader) -> list or None:
+        row = next(reader, None)
+        if row is None:
+            return None
+        return self._convert_row_to_typed_row(types, row)
+    
+    def _read_typed_rows(self, types: tuple, reader: csv.reader) -> list:
+        rows = []
+        row = next(reader, None)
+        while row is not None:
+            rows.append(self._convert_row_to_typed_row(types, row))
+            row = next(reader, None)
+        return rows
 
     # ========================================================
     #                  ***** Helpers *****
@@ -494,8 +521,8 @@ class Relational(BaseEngine):
         schema_path = f"{BASE_DIR}/Storage/Relational/{table_name}/schema.txt"
         with open(schema_path, "r") as f:
             csv_reader = csv.reader(f)
-            schema = tuple(next(csv_reader, []))
-            types = tuple(next(csv_reader, []))
+            schema = next(csv_reader, [])
+            types = next(csv_reader, [])
         if len(schema) != len(types):
             # get first row in chunk_0.csv
             table_storage_path = self._get_table_path(table_name)
@@ -510,8 +537,16 @@ class Relational(BaseEngine):
             # get the types again
             with open(schema_path, "r") as f:
                 csv_reader = csv.reader(f)
-                schema = tuple(next(csv_reader, []))
-                types = tuple(next(csv_reader, []))
+                schema = next(csv_reader, [])
+                types = next(csv_reader, [])
+        # deserialize the types to type objects
+        for i in range(len(types)):
+            if types[i] == "<class 'int'>":
+                types[i] = int
+            elif types[i] == "<class 'float'>":
+                types[i] = float
+            else:
+                types[i] = str
         return tuple(types)
     
     # return a list of chunk paths
@@ -559,8 +594,11 @@ class Relational(BaseEngine):
     def _row_to_dict(self, schema: tuple, row: list) -> dict:
         row_dict = {}
         for field in schema:
-            row_dict[field] = row[schema.index(field)]
+            row_dict[field] = self._get_row_value(schema, row, field)
         return row_dict
+    
+    def _get_row_value(self, schema: tuple, row: list, field: str) -> int or float or str:
+        return row[schema.index(field)]
     
     # insert the row into the table
     # Assumption: 
@@ -599,12 +637,12 @@ class Relational(BaseEngine):
                         csv_writer = csv.writer(f)
                         csv_writer.writerow(row)
         
-    def _row_meets_condition(self, schema, types, row, condition):
+    def _row_meets_condition(self, schema, typed_row, condition):
         # !!! issue: only support one condition
         match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
         field, op, value = match.groups()
 
-        field_type = self._get_field_type_from_types(schema, types, field)
+        field_type = type(self._get_row_value(schema, typed_row, field))
         value = self._convert_to_type(value, field_type)
 
         # get the operator function
@@ -625,122 +663,121 @@ class Relational(BaseEngine):
         # get the index of the field
         field_index = schema.index(field)
         # get the value of the field
-        row_value = row[field_index]
-        row_value = self._convert_to_type(row_value, field_type)
+        typed_row_value = typed_row[field_index]
         # compare the row_value and value
-        return op_func(row_value, value)
+        return op_func(typed_row_value, value)
     
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For temporary files
+    # ========================================================
+
+    # for create temporary files name in external sort
+    def _temp_file_name(self, chunk_num: int, pass_num: int) -> str:
+        return f"{TEMP_DIR}/chunk_{chunk_num}_pass_{pass_num}.csv"
+
+    def _get_chunk_number_from_temp_file(self, temp_file_name: str) -> int:
+        return int(temp_file_name.split(".")[0].split("_")[1])
+    
+    def _get_pass_number_from_temp_file(self, temp_file_name: str) -> int:
+        return int(temp_file_name.split(".")[0].split("_")[3])
+    
+    def _get_temp_chunks(self) -> list:
+        temp_chunks = []
+        for file in os.listdir(TEMP_DIR):
+            if file.endswith(".csv"):
+                temp_chunks.append(f"{TEMP_DIR}/{file}")
+        return temp_chunks
+
     # ========================================================
     #                  ***** Helpers *****
     #
     #                   For external sort
     # ========================================================
 
-    def _external_sort(self, table_name, field, order_method) -> str:
+    def _external_sort(self, table_name: str, field: str, order_method: str) -> str:
         table_schema = self._get_table_schema(table_name)
         table_types = self._get_table_types(table_name)
-        # check if the field is in the table
-        self._check_if_field_exists_in_schema(table_schema, field)
-        # find the index of the field
-        field_index = table_schema.index(field)
-        field_type = None
-        # creates temporary sorted csv table in the Temp directory
-        table_storage_path = self._get_table_path(table_name)
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                # sort the csv file based on the field
-                with open(f"{table_storage_path}/{file}", "r") as f:
-                    csv_reader = csv.reader(f)
-                    # determine the field type
-                    # !!! issue: weak typing
-                    if field_type is None:
-                        for row in csv_reader:
-                            if row[field_index].isdigit():
-                                field_type = int
-                                break
-                            elif row[field_index].replace('.', '', 1).isdigit():
-                                field_type = float
-                                break
-                            else:
-                                field_type = str
-                                break
-                    # get the value of the field
-                    def get_key(row):
-                        if field_type == int:
-                            return int(row[field_index])
-                        elif field_type == float:
-                            return float(row[field_index]) if row[field_index] != "" else float("-inf")
-                        else:
-                            return row[field_index]
-                    sorted_table = sorted(csv_reader, key = lambda row: get_key(row), reverse = True if order_method == "desc" else False)
-                # write the sorted table to the Temp directory
-                chunk_num = file.split(".")[0].split("_")[1]
-                with open(f"{BASE_DIR}/Temp/chunk_{chunk_num}_pass_0.csv", "w") as f:
-                    csv_writer = csv.writer(f)
-                    csv_writer.writerows(sorted_table)
-        # merge the sorted chunks
-        return self._merge_sorted_chunks(field, table_schema, order_method, 0)
+        # sorting phase
+        for chunk in self._get_table_chunks(table_name):
+            with open(chunk, "r") as c:
+                csv_reader = csv.reader(c)
+                typed_rows = self._read_typed_rows(table_types, csv_reader)
+                # sort the current chunk using STD sort
+                cur_sorted_table = sorted(typed_rows, key = lambda typed_row: self._get_row_value(table_schema, typed_row, field), reverse = True if order_method == "desc" else False)
+            # write the sorted table to the Temp directory
+            chunk_num = self._get_chunk_number(chunk)
+            with open(self._temp_file_name(chunk_num, 0), "w") as c:
+                csv_writer = csv.writer(c)
+                csv_writer.writerows(cur_sorted_table)
+        # merging phase
+        return self._merge_sorted_chunks(field, table_schema, table_types, order_method, 0)
 
-    def _merge_sorted_chunks(self, field, schema, order_method, pass_num) -> str:
-        # get the path of the temp directory
-        temp_path = f"{BASE_DIR}/Temp"
-        # get the index of the field
-        field_index = schema.index(field)
-        # find the max chunk number under the temp_path
+    def _merge_sorted_chunks(self, field, schema, types, order_method, pass_num) -> str:
+        # find the max chunk number under the Temp directory
         max_chunk_num = -1
-        for file in os.listdir(temp_path):
-            # ignore the files not in current pass
-            if file.endswith(".csv") and file.split(".")[0].split("_")[3] == str(pass_num):
-                chunk_num = int(file.split("_")[1])
-                if chunk_num > max_chunk_num:
-                    max_chunk_num = chunk_num
+        for chunk in self._get_temp_chunks():
+            # skip the files not in current pass
+            chunk_pass_num = self._get_pass_number_from_temp_file(chunk)
+            if chunk_pass_num != pass_num:
+                continue
+            chunk_num = self._get_chunk_number_from_temp_file(chunk)
+            if chunk_num > max_chunk_num:
+                max_chunk_num = chunk_num
 
-        if max_chunk_num == 0 or max_chunk_num == -1:
-            # no need to merge
-            return f"{temp_path}/chunk_0_pass_{pass_num}.csv"
+        print(f"max_chunk_num: {max_chunk_num}")
 
+        if max_chunk_num == -1:
+            # no data in the Temp directory
+            raise Exception("No data in the Temp directory")
+
+        if max_chunk_num == 0:
+            # this is the final run, no need to merge
+            return self._temp_file_name(0, pass_num)
+        
         next_chunk_num = 0 # the chunk number of the merged file in the next pass
         start_chunk_num = 0 # the starting chunk of current merge group
-        end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1)
+        end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1) # the ending chunk of current merge group
+
         while start_chunk_num <= max_chunk_num:
-            output_file = f"{temp_path}/chunk_{next_chunk_num}_pass_{pass_num + 1}.csv"
-            reader_dict = {} # key: chunk_num, value: csv_reader
-            loaded_rows = PriorityQueue() # pq of tuples (key, (row, chunk_num))
+            output_file = self._temp_file_name(next_chunk_num, pass_num + 1)
+            reader_dict = {}
+            loaded_rows = PriorityQueue() # pq of RowElement
             # open the csv readers for all the chunks in the current merge group
             opened_files = []
-            for chunk_num in range(start_chunk_num, end_chunk_num):
-                chunk_file_name = f"{temp_path}/chunk_{chunk_num}_pass_{pass_num}.csv"
-                opened_file = open(chunk_file_name, "r")
+            for cur_chunk_num in range(start_chunk_num, end_chunk_num):
+                cur_chunk = self._temp_file_name(cur_chunk_num, pass_num)
+                opened_file = open(cur_chunk, "r")
                 opened_files.append(opened_file)
-                reader_dict[chunk_num] = csv.reader(opened_file)
+                reader_dict[cur_chunk_num] = csv.reader(opened_file)
             # load the first row from each chunk into the heap
-            for chunk_num in range(start_chunk_num, end_chunk_num):
-                csv_reader = reader_dict[chunk_num]
-                row = next(csv_reader, None)
-                if row is not None:
-                    row_element = RowElement(chunk_num, row, field_index, order_method)
+            for cur_chunk_num in range(start_chunk_num, end_chunk_num):
+                csv_reader = reader_dict[cur_chunk_num]
+                typed_row = self._read_typed_row(types, csv_reader)
+                if typed_row is not None:
+                    row_element = RowElement(cur_chunk_num, typed_row, schema.index(field), order_method)
                     loaded_rows.put(row_element)
             # output until the heap is empty
             while not loaded_rows.empty():
                 row_element = loaded_rows.get()
-                row = row_element.row
+                typed_row = row_element.row
                 chunk_num = row_element.chunk_num
                 # write the row to the output file
                 with open(output_file, "a") as f:
                     csv_writer = csv.writer(f)
-                    csv_writer.writerow(row)
-                # load the next row from the same chunk
-                next_row = next(reader_dict[chunk_num], None)
+                    csv_writer.writerow(typed_row)
+                # load the next row from the same chunk that output the row
+                next_row = self._read_typed_row(types, reader_dict[chunk_num])
                 if next_row is not None:
-                    row_element = RowElement(chunk_num, next_row, field_index, order_method)
+                    row_element = RowElement(chunk_num, next_row, schema.index(field), order_method)
                     loaded_rows.put(row_element)
             # close all open files
             for opened_file in opened_files:
                 opened_file.close()
-            # update the start/end_chunk_num and next_chunk_num
+            # update the start/end_chunk_num and next_chunk_num and proceed to the next merge group
             start_chunk_num += CHUNK_SIZE
             end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1)
             next_chunk_num += 1
-
         # proceed to the next pass
-        return self._merge_sorted_chunks(field, schema, order_method, pass_num + 1)
+        return self._merge_sorted_chunks(field, schema, types, order_method, pass_num + 1)

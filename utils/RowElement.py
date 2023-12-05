@@ -1,5 +1,6 @@
 # for comparison in external sort
 class RowElement(object):
+    # will be sorted using the field at field_index
     def __init__(self, chunk_num, row, field_index, order_method):
         self.chunk_num = chunk_num
         self.row = row
