@@ -36,7 +36,7 @@ class Relational(BaseEngine):
 
     def create_table(self, table_name, fields) -> bool:
         if self._table_exists(table_name):
-            print(f"Cannot load dataset. Table {table_name} already exists!")
+            print(f"Cannot create table. Table {table_name} already exists!")
             return False
         table_schema = tuple(fields)
         table_storage_path = self._get_table_path(table_name)
@@ -74,7 +74,7 @@ class Relational(BaseEngine):
         if not os.path.exists(table_storage_path):
             os.mkdir(table_storage_path)
         else:
-            print("Table already exists!")
+            print("Cannot load dataset. Table already exists!")
             return
         # read the first line of the csv to find the schema
         with open(csv_file_path, "r") as f:
@@ -557,7 +557,7 @@ class Relational(BaseEngine):
     # ========================================================
     #                  ***** Helpers *****
     #
-    #                   For csv management
+    #                  For table management
     # ========================================================
 
     def _get_table_path(self, table_name: str) -> str:
@@ -637,7 +637,7 @@ class Relational(BaseEngine):
 
     def _get_chunk_number(self, chunk_path: str) -> int:
         # chunk name example: chunk_0.csv
-        return int(chunk_path.split(".")[0].split("_")[1])
+        return int(chunk_path.split("/")[-1].split(".")[0].split("_")[-1])
     
     # ========================================================
     #                  ***** Helpers *****
@@ -668,13 +668,12 @@ class Relational(BaseEngine):
     # - the table exists
     def _insert_row(self, table_name: str, row: list) -> None:
         table_storage_path = self._get_table_path(table_name)
-        # iterate through all .csv files in this directory and find the chunk_num with max num
+        # iterate through all chunks in this directory and find the chunk_num with max num
         max_chunk_num = -1
-        for file in os.listdir(table_storage_path):
-            if file.endswith(".csv"):
-                chunk_num = self._get_chunk_number(file)
-                if chunk_num > max_chunk_num:
-                    max_chunk_num = chunk_num
+        for chunk in self._get_table_chunks(table_name):
+            chunk_num = self._get_chunk_number(chunk)
+            if chunk_num > max_chunk_num:
+                max_chunk_num = chunk_num
         # If the max_chunk_num is -1, there is no chunk already created. Create a new chunk.
         if max_chunk_num == -1:
             # create a new csv chunk
