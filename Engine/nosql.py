@@ -113,9 +113,14 @@ class NoSQL(BaseEngine):
             docs = self._read_docs_from_file(chunk)
             for doc in docs:
                 projected_doc = {}
-                for field in fields:
-                    if field in doc:
-                        projected_doc[field] = doc[field]
+                if len(fields) == 1 and fields[0] == "*":
+                    # if fields is *, return the whole doc
+                    projected_doc = doc
+                else:
+                    # else, return only the fields in fields
+                    for field in fields:
+                        if field in doc:
+                            projected_doc[field] = doc[field]
                 self._print_doc(projected_doc)
         print("projection succeeded")
         return True
