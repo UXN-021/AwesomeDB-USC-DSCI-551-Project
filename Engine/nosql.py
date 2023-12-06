@@ -4,7 +4,6 @@ import os
 from Engine.base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE
 
-# same as relational.py but store data in json format
 class NoSQL(BaseEngine):
     def __init__(self):
         super().__init__()
@@ -15,6 +14,18 @@ class NoSQL(BaseEngine):
             input_str = input("your query>").strip()
             if not self.parse_and_execute(input_str):
                 break
+
+    def drop_table(self, table_name: str) -> bool:
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return False
+        table_storage_path = self._get_table_path(table_name)
+        # delete the table directory
+        for file in os.listdir(table_storage_path):
+            os.remove(f"{table_storage_path}/{file}")
+        os.rmdir(table_storage_path)
+        print("table dropped")
+        return True
 
     def load_data(self, file_name) -> bool:
         # check if file is csv
@@ -75,6 +86,12 @@ class NoSQL(BaseEngine):
 
     def _get_table_path(self, table_name: str) -> str:
         return f"{BASE_DIR}/Storage/NoSQL/{table_name}"
+    
+    def _table_exists(self, table_name: str) -> bool:
+        table_storage_path = f"{BASE_DIR}/Storage/NoSQL/{table_name}"
+        if not os.path.exists(table_storage_path):
+            return False
+        return True
 
     def _get_chunk_number(self, chunk_path: str) -> int:
         return int(chunk_path.split("/")[-1].split(".")[0].split("_")[-1])
