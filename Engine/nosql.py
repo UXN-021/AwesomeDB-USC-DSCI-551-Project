@@ -56,6 +56,23 @@ class NoSQL(BaseEngine):
         print("loading succeeded")
         return True
     
+    def insert_data(self, table_name: str, data: list) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return False
+        # convert the data to json
+        data_dict = {}
+        for field_data in data:
+            field_name, field_value = field_data.split("=")
+            # convert to correct type
+            data_dict[field_name] = self._get_typed_value(field_value)
+        doc = json.dumps(data_dict)
+        # insert the doc into the table
+        self._insert_doc(table_name, doc)
+        print("insertion succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
