@@ -86,7 +86,23 @@ class NoSQL(BaseEngine):
             self._write_docs_to_file(filtered_docs, chunk)
         print("deletion succeeded")
         return True
-
+    
+    def update_data(self, table_name: str, condition: str, data: list) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            self._clear_file(chunk)
+            for doc in docs:
+                if self._doc_meets_condition(doc, condition):
+                    for field_data in data:
+                        field_name, field_value = field_data.split("=")
+                        doc[field_name] = self._get_typed_value(field_value)
+                self._write_doc_to_file(doc, chunk)
+        print("update succeeded")
+        return True
     
     # ========================================================
     #                  ***** Helpers *****
