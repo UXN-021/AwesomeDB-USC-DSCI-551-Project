@@ -125,6 +125,28 @@ class NoSQL(BaseEngine):
         print("projection succeeded")
         return True
     
+    def filtering(self, table_name: str, fields: list, condition: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            for doc in docs:
+                if self._doc_meets_condition(doc, condition):
+                    projected_doc = {}
+                    if len(fields) == 1 and fields[0] == "*":
+                        # if fields is *, return the whole doc
+                        projected_doc = doc
+                    else:
+                        # else, return only the fields in fields
+                        for field in fields:
+                            if field in doc:
+                                projected_doc[field] = doc[field]
+                    self._print_doc(projected_doc)
+        print("filtering succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
@@ -238,7 +260,12 @@ class NoSQL(BaseEngine):
         doc_field_value = doc[field]
         # check if doc field value is of the same type as value
         if type(doc_field_value) != type(value):
-            return False
+            if type(doc_field_value) == str or type(value) == str:
+                return False
+            elif type(doc_field_value) == float or type(value) == float:
+                # if one of them is float, convert both to float
+                value = float(value)
+                doc_field_value = float(doc_field_value)
         # get the operator function
         ops = {
             "=": operator.eq,
