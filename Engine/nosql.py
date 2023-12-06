@@ -1,6 +1,8 @@
 import csv
 import json
+import operator
 import os
+import re
 from Engine.base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE
 
@@ -18,7 +20,7 @@ class NoSQL(BaseEngine):
     def drop_table(self, table_name: str) -> bool:
         if not self._table_exists(table_name):
             print(f"Table {table_name} does not exist!")
-            return False
+            return True
         table_storage_path = self._get_table_path(table_name)
         # delete the table directory
         for file in os.listdir(table_storage_path):
@@ -31,7 +33,7 @@ class NoSQL(BaseEngine):
         # check if file is csv
         if not file_name.endswith(".csv"):
             print("file must be a csv file")
-            return False
+            return True
         print("loading data...")
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
@@ -49,7 +51,7 @@ class NoSQL(BaseEngine):
             csv_row = next(csv_reader, None)
             while csv_row is not None:
                 # convert csv row to json
-                doc = self._csv_row_to_json(csv_row, table_schema)
+                doc = self._csv_row_to_doc(csv_row, table_schema)
                 # insert the doc into the table
                 self._insert_doc(table_name, doc)
                 csv_row = next(csv_reader, None)
@@ -60,32 +62,61 @@ class NoSQL(BaseEngine):
         # check if table exists
         if not self._table_exists(table_name):
             print(f"Table {table_name} does not exist!")
-            return False
+            return True
         # convert the data to json
-        data_dict = {}
+        doc = {}
         for field_data in data:
             field_name, field_value = field_data.split("=")
             # convert to correct type
-            data_dict[field_name] = self._get_typed_value(field_value)
-        doc = json.dumps(data_dict)
+            doc[field_name] = self._get_typed_value(field_value)
         # insert the doc into the table
         self._insert_doc(table_name, doc)
         print("insertion succeeded")
         return True
+    
+    def delete_data(self, table_name: str, condition: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            self._clear_file(chunk)
+            filtered_docs = filter(lambda doc: not self._doc_meets_condition(doc, condition), docs)
+            self._write_docs_to_file(filtered_docs, chunk)
+        print("deletion succeeded")
+        return True
+
     
     # ========================================================
     #                  ***** Helpers *****
     #
     #                   For r/w json files 
     # ========================================================
-    def _write_doc_to_file(self, doc, file_path):
+    def _write_doc_to_file(self, doc: dict, file_path: str):
         with open(file_path, 'a') as f:
-            f.write(doc + "\n")
+            f.write(json.dumps(doc) + "\n")
 
-    def _write_docs_to_file(self, docs, file_path):
+    def _write_docs_to_file(self, docs: list, file_path: str):
         with open(file_path, 'a') as f:
             for doc in docs:
-                f.write(doc + "\n")
+                 f.write(json.dumps(doc) + "\n")
+
+    def _read_docs_from_file(self, file_path: str) -> list:
+        docs_data = []
+        with open(file_path, 'r') as f:
+            docs_data = [json.loads(line.rstrip("\n")) for line in f.readlines()]
+        return docs_data
+    
+    def _next_doc(self, opened_file) -> dict or None:
+        line = next(opened_file, None)
+        if line is None:
+            return None
+        return json.loads(line.rstrip("\n"))
+    
+    def _clear_file(self, file_path: str) -> None:
+        with open(file_path, 'r+') as f:
+            f.truncate(0)
 
     def _get_typed_value(self, val: str) -> int or float or str:
         if val.isdigit():
@@ -132,18 +163,14 @@ class NoSQL(BaseEngine):
     #
     #                   For doc operations
     # ========================================================
-    def _csv_row_to_dict(self, row, schema) -> dict:
-        row_dict = {}
+    def _csv_row_to_doc(self, row, schema) -> dict:
+        doc = {}
         for i in range(len(schema)):
-            row_dict[schema[i]] = self._get_typed_value(row[i])
-        return row_dict
+            doc[schema[i]] = self._get_typed_value(row[i])
+        return doc
     
-    def _csv_row_to_json(self, row, schema) -> str:
-        row_dict = self._csv_row_to_dict(row, schema)
-        return json.dumps(row_dict)
-    
-    def _insert_doc(self, table_name: str, doc: str) -> None:
-        # iterate through all chunks in this directory and find the chunk_num with max num, -1 if no chunks
+    def _insert_doc(self, table_name: str, doc: dict) -> None:
+         # iterate through all chunks in this directory and find the chunk_num with max num, -1 if no chunks
         max_chunk_num = max([self._get_chunk_number(chunk) for chunk in self._get_table_chunks(table_name)], default=-1)
         if max_chunk_num == -1:
             # if no chunks, create a new chunk
@@ -160,6 +187,31 @@ class NoSQL(BaseEngine):
                 # if full, create a new chunk
                 chunk_path = self._get_chunk_path(table_name, max_chunk_num + 1)
                 self._write_doc_to_file(doc, chunk_path)
+
+    def _doc_meets_condition(self, doc: dict, condition: str) -> bool:
+        match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
+        field, op, value = match.groups()
+        value = self._get_typed_value(value)
+        # check if doc has the field
+        if field not in doc:
+            return False
+        # get the doc field value
+        doc_field_value = doc[field]
+        # check if doc field value is of the same type as value
+        if type(doc_field_value) != type(value):
+            return False
+        # get the operator function
+        ops = {
+            "=": operator.eq,
+            "!=": operator.ne,
+            ">": operator.gt,
+            "<": operator.lt,
+            ">=": operator.ge,
+            "<=": operator.le,
+        }
+        op_func = ops.get(op)
+        # check if doc field value meets the condition
+        return op_func(doc_field_value, value)
                 
             
             
