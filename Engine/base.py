@@ -10,7 +10,7 @@ class BaseEngine():
         "insert_data": r'insert into (.*?) with data (.*?);',
         "delete_data": r'delete from (.*?) where (.*?);',
         "update_data": r'update in (.*?) where (.*?) and set (.*?);',
-        "projection": r'show column (.*?) from (.*?);',
+        "projection": r'show field (.*?) from (.*?);',
         "filtering": r'show data (.*?) from (.*?) where (.*?);',
         "join": r'join (.*?) and (.*?) on (.*?);',
         "aggregate": r'find (.*?) in (.*?) group by (.*?);',

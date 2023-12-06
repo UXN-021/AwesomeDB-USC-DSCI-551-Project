@@ -104,11 +104,28 @@ class NoSQL(BaseEngine):
         print("update succeeded")
         return True
     
+    def projection(self, table_name: str, fields: list) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            for doc in docs:
+                projected_doc = {}
+                for field in fields:
+                    if field in doc:
+                        projected_doc[field] = doc[field]
+                self._print_doc(projected_doc)
+        print("projection succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
     #                   For r/w json files 
     # ========================================================
+
     def _write_doc_to_file(self, doc: dict, file_path: str):
         with open(file_path, 'a') as f:
             f.write(json.dumps(doc) + "\n")
@@ -179,6 +196,7 @@ class NoSQL(BaseEngine):
     #
     #                   For doc operations
     # ========================================================
+
     def _csv_row_to_doc(self, row, schema) -> dict:
         doc = {}
         for i in range(len(schema)):
@@ -229,6 +247,12 @@ class NoSQL(BaseEngine):
         # check if doc field value meets the condition
         return op_func(doc_field_value, value)
                 
-            
-            
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For printing docs
+    # ========================================================
+    
+    def _print_doc(self, doc: dict) -> None:
+        print(json.dumps(doc, indent=4))
             
