@@ -2,9 +2,12 @@ import csv
 import json
 import operator
 import os
+from queue import PriorityQueue
 import re
 from Engine.base import BaseEngine
-from config import BASE_DIR, CHUNK_SIZE
+from config import BASE_DIR, CHUNK_SIZE, TEMP_DIR
+from utils.DocElement import DocElement
+from utils.util import clear_temp_files, mix_key
 
 class NoSQL(BaseEngine):
     def __init__(self):
@@ -147,6 +150,23 @@ class NoSQL(BaseEngine):
         print("filtering succeeded")
         return True
     
+    def order(self, table_name: str, field: str, order_method: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        # do external sorting
+        temp_sorted_file = self._external_sort(table_name, field, order_method)
+        # print the sorted file
+        with open(temp_sorted_file, 'r') as f:
+            doc = self._next_doc(f)
+            while doc is not None:
+                self._print_doc(doc)
+                doc = self._next_doc(f)
+        clear_temp_files()
+        print("order succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
@@ -278,6 +298,97 @@ class NoSQL(BaseEngine):
         op_func = ops.get(op)
         # check if doc field value meets the condition
         return op_func(doc_field_value, value)
+    
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For temp files
+    # ========================================================
+    
+    def _temp_file_name(self, chunk_num: int, pass_num: int) -> str:
+        return f"{TEMP_DIR}/chunk_{chunk_num}_pass_{pass_num}"
+    
+    def _get_chunk_number_from_temp_file(self, temp_file_name: str) -> int:
+        # example: Temp/chunk_0_pass_0
+        return int(temp_file_name.split("/")[-1].split(".")[0].split("_")[1])
+    
+    def _get_pass_number_from_temp_file(self, temp_file_name: str) -> int:
+        # example: Temp/chunk_0_pass_0
+        return int(temp_file_name.split("/")[-1].split(".")[0].split("_")[3])
+    
+    def _get_temp_chunks(self) -> list:
+        temp_chunks = []
+        for file in os.listdir(TEMP_DIR):
+            if file.endswith(".gitkeep") or file.endswith(".keep"):
+                continue
+            temp_chunks.append(f"{TEMP_DIR}/{file}")
+        return temp_chunks
+    
+    # ========================================================
+    #                  ***** Helpers *****
+    #
+    #                   For external sort
+    # ========================================================
+
+    def _external_sort(self, table_name: str, field: str, order_method: str) -> str:
+        # sorting phase
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            # ignore docs that don't have the field
+            docs = filter(lambda doc: field in doc, docs)
+            sorted_docs = sorted(docs, key=lambda doc: mix_key(doc[field]), reverse=order_method == "desc")
+            # write the sorted docs to the temp directory
+            chunk_num = self._get_chunk_number(chunk)
+            self._write_docs_to_file(sorted_docs, self._temp_file_name(chunk_num, 0))
+        # merge the sorted chunks
+        return self._merge_sorted_chunks(field, order_method, 0)
+
+    def _merge_sorted_chunks(self, field, order_method, pass_num) -> str:
+        # find the max chunk number under the temp directory and skip the chunks not in the current pass
+        # return -1 if no chunks
+        max_chunk_num = max([self._get_chunk_number_from_temp_file(chunk) for chunk in self._get_temp_chunks() if self._get_pass_number_from_temp_file(chunk) == pass_num], default=-1)
+        if max_chunk_num == -1:
+            raise Exception("No data in the temp directory!")
+        
+        if max_chunk_num == 0:
+            # return the final run
+            return self._temp_file_name(0, pass_num)
+        
+        # Use CHUNK_SIZE-way merging
+        next_chunk_num = 0 # the chunk number of the merged file in the next pass
+        start_chunk_num = 0 # the starting chunk of current merge group
+        end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1) # the ending chunk of current merge group
+
+        while start_chunk_num <= max_chunk_num:
+            merged_file_path = self._temp_file_name(next_chunk_num, pass_num + 1)
+            opened_files = {}
+            loaded_docs = PriorityQueue() # pq of DocElement
+            for chunk_num in range(start_chunk_num, end_chunk_num):
+                opened_files[chunk_num] = open(self._temp_file_name(chunk_num, pass_num), 'r')
+            # load the first doc from each file
+            for chunk_num in range(start_chunk_num, end_chunk_num):
+                doc = self._next_doc(opened_files[chunk_num])
+                if doc is not None:
+                    loaded_docs.put(DocElement(chunk_num, doc, field, order_method))
+            # output until the pq is empty
+            while not loaded_docs.empty():
+                doc_element = loaded_docs.get()
+                # write the doc to the merged file
+                self._write_doc_to_file(doc_element.doc, merged_file_path)
+                # load the next doc from the same file that the doc was read from
+                next_doc = self._next_doc(opened_files[doc_element.get_chunk_num()])
+                if next_doc is not None:
+                    loaded_docs.put(DocElement(doc_element.get_chunk_num(), next_doc, field, order_method))
+            # close all opened files
+            for _, opened_file in opened_files.items():
+                opened_file.close()
+            opened_files.clear()
+            # update the start/end_chunk_num and next_chunk_num and proceed to the next merge group
+            start_chunk_num = end_chunk_num
+            end_chunk_num = min(start_chunk_num + CHUNK_SIZE, max_chunk_num + 1)
+            next_chunk_num += 1
+        # proceed to the next pass
+        return self._merge_sorted_chunks(field, order_method, pass_num + 1)
                 
     # ========================================================
     #                  ***** Helpers *****

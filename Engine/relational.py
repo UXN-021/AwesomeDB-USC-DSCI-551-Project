@@ -258,7 +258,7 @@ class Relational(BaseEngine):
         if field not in table_schema:
             print(f"field {field} not in table schema")
             return True
-        # merge the sorted chunks
+        # do external sorting
         temp_sorted_file = self._external_sort(table_name, field, order_method)
         # print the merged file
         format_str = get_format_str(table_schema, FIELD_PRINT_LEN)
@@ -812,7 +812,7 @@ class Relational(BaseEngine):
                 csv_reader = csv.reader(c)
                 typed_rows = self._read_typed_rows(table_types, csv_reader)
                 # sort the current chunk using STD sort
-                cur_sorted_table = sorted(typed_rows, key = lambda typed_row: self._get_row_value(table_schema, typed_row, field), reverse = True if order_method == "desc" else False)
+                cur_sorted_table = sorted(typed_rows, key = lambda typed_row: self._get_row_value(table_schema, typed_row, field), reverse = order_method == "desc")
             # write the sorted table to the Temp directory
             chunk_num = self._get_chunk_number(chunk)
             with open(self._temp_file_name(chunk_num, 0), "w") as c:

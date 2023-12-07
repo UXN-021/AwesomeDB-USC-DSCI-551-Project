@@ -30,6 +30,16 @@ def print_row(row_dict, schema, format_str, max_length):
             row_list.append(field_value)
     print(format_str.format(*row_list))
 
+# ========================================================
+#                For mixed keys in NoSQL
+# ========================================================
+
+def mix_key(val):
+        # numeric after string
+        if type(val) == int or type(val) == float:
+            return (1, val)
+        else:
+            return (0, val)
 
 # ========================================================
 #                   For the temp folder
