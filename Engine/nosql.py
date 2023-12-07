@@ -241,6 +241,53 @@ class NoSQL(BaseEngine):
         print("aggregation succeeded")
         return True
     
+    def aggregate_table(self, table_name: str, aggregate_method: str, aggregate_field: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        # directly iterate through all chunks and aggregate
+        cur_result = None
+        for chunk in self._get_table_chunks(table_name):
+            docs = self._read_docs_from_file(chunk)
+            for doc in docs:
+                if aggregate_field in doc:
+                    cur_aggregate_field_value = mix_key(doc[aggregate_field])
+                else:
+                    cur_aggregate_field_value = mix_key(0)
+                if aggregate_method == "sum":
+                    if cur_result is None:
+                        cur_result = mix_key(0)
+                    cur_result = add_key(cur_result, cur_aggregate_field_value)
+                elif aggregate_method == "avg":
+                    if cur_result is None:
+                        cur_result = [mix_key(0), 0]
+                    cur_result[0] = add_key(cur_result[0], cur_aggregate_field_value)
+                    cur_result[1] += 1
+                elif aggregate_method == "count":
+                    if cur_result is None:
+                        cur_result = 0
+                    cur_result += 1
+                elif aggregate_method == "max":
+                    if cur_result is None:
+                        cur_result = cur_aggregate_field_value
+                    else:
+                        cur_result = max(cur_result, cur_aggregate_field_value)
+                elif aggregate_method == "min":
+                    if cur_result is None:
+                        cur_result = cur_aggregate_field_value
+                    else:
+                        cur_result = min(cur_result, cur_aggregate_field_value)
+        if cur_result is not None and aggregate_method == "avg":
+            cur_result = round(get_key_val(cur_result[0]) / cur_result[1], 2)
+        elif aggregate_method == "sum" or aggregate_method == "max" or aggregate_method == "min":
+            cur_result = get_key_val(cur_result)
+        if cur_result is None:
+            cur_result = 0
+        self._print_doc({f"{aggregate_method}({aggregate_field})": cur_result})
+        print("aggregation succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
