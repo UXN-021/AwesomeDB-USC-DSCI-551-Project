@@ -288,6 +288,36 @@ class NoSQL(BaseEngine):
         print("aggregation succeeded")
         return True
     
+    def group(self, table_name: str, group_field: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        
+        # do external sorting
+        temp_sorted_file = self._external_sort(table_name, group_field, "asc")
+        # group
+        with open(temp_sorted_file, 'r') as f:
+            doc = self._next_doc(f)
+            if doc is None:
+                print("No data to group!")
+                return True
+            pre_group_by_field_value = None
+            while doc is not None:
+                # get the group_by_field value of the current doc
+                cur_group_by_field_value = doc[group_field]
+                # if the group_by_field value changes, output the group result of the previous group
+                if cur_group_by_field_value != pre_group_by_field_value and pre_group_by_field_value is not None:
+                    self._print_doc({group_field: pre_group_by_field_value})
+                doc = self._next_doc(f)
+                pre_group_by_field_value = cur_group_by_field_value
+            # output the group result of the last group
+            if doc is None and pre_group_by_field_value is not None:
+                self._print_doc({group_field: pre_group_by_field_value})
+        clear_temp_files()
+        print("grouping succeeded")
+        return True
+    
     # ========================================================
     #                  ***** Helpers *****
     #
