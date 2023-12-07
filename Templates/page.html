@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Management</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+
+    .container {
+      text-align: left;
+      margin-top: 50px;
+      overflow: auto; /* Add overflow property for scrolling */
+      max-height: 70vh; /* Set a maximum height for the scrollable area */
+    }
+
+    div {
+      margin-bottom: 15px;
+    }
+
+    label {
+      display: inline-block;
+      width: 120px;
+      margin-right: 10px;
+    }
+
+    input, select {
+      padding: 8px;
+      width: 200px;
+    }
+
+    select {
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      padding: 8px;
+      width: 150px;
+      opacity: 0.8;
+      border-radius: 4px;
+    }
+
+    button {
+      background-color: #4caf50;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      cursor: pointer;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-upload-btn {
+      background-color: transparent;
+      color: #4caf50;
+      padding: 8px 12px;
+      border: 2px solid #4caf50;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-left: 10px;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+  .display-area {
+    max-height: 150px; /* Set the maximum height for the scrollable display area */
+    max-width: 600px; 
+    overflow: auto; /* Enable scrolling */
+    border: 1px solid #ccc; 
+    padding: 10px; 
+    background-color: white; 
+    margin: 0 auto; /*  display area horizontally */
+  }
+
+    .file-upload-btn:hover {
+      background-color: #4caf50;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Database Selection Dropdown with Load Button -->
+  <div>
+    <label for="databaseSelect">Database:</label>
+    <select id="databaseSelect" onchange="selectDatabase()">
+      <option value="nosql">NoSQL</option>
+      <option value="relational">Relational Database</option>
+    </select>
+    
+  
+    <input type="file" id="fileInput" style="display:none" accept=".csv, .json" onchange="handleFileSelection()" />
+    
+    <button class="file-upload-btn" onclick="uploadFile()">Load</button>
+  </div>
+
+  <!-- Create Table Section -->
+  <div>
+    <label for="createInput">Create:</label>
+    <input type="text" id="createInput" placeholder="Table name">
+    <input type="text" id="createInput2" placeholder="Additional info">
+    <button onclick="createTable()">Create</button>
+  </div>
+
+  <!-- Insert Data Section -->
+  <div>
+    <label for="insertInput">Insert:</label>
+    <input type="text" id="insertInput" placeholder="Table name">
+    <input type="text" id="insertInput2" placeholder="Data">
+    <button onclick="insertData()">Insert</button>
+  </div>
+
+  <!-- Update Data Section -->
+  <div>
+    <label for="updateInput">Update:</label>
+    <input type="text" id="updateInput" placeholder="Table name">
+    <input type="text" id="updateInput2" placeholder="Updated data">
+    <input type="text" id="updateInput3" placeholder="Condition">
+    <button onclick="updateData()">Update</button>
+  </div>
+
+  <!-- Projection Section -->
+  <div>
+    <label for="projectionInput">Projection:</label>
+    <input type="text" id="projectionInput" placeholder="Table name">
+    <input type="text" id="projectionInput2" placeholder="Fields to project">
+    <button onclick="projectFields()">Project</button>
+  </div>
+
+  <!-- Filtering Section -->
+  <div>
+    <label for="filteringInput">Filtering:</label>
+    <input type="text" id="filteringInput" placeholder="Table name">
+    <input type="text" id="filteringInput2" placeholder="Filter criteria">
+    <input type="text" id="filteringInput3" placeholder="Fields to display">
+    <button onclick="applyFilter()">Filter</button>
+  </div>
+
+  <!-- Aggregation Section -->
+  <div>
+    <label for="aggregationInput">Aggregation:</label>
+    <input type="text" id="aggregationInput" placeholder="Table name">
+    <input type="text" id="aggregationInput2" placeholder="Aggregation operation">
+    <input type="text" id="aggregationInput3" placeholder="Fields to group by">
+    <button onclick="performAggregation()">Aggregate</button>
+  </div>
+  
+
+
+  <!-- Order Section -->
+  <div>
+    <label for="orderInput">Order:</label>
+    <input type="text" id="orderInput" placeholder="Table name">
+    <input type="text" id="orderInput2" placeholder="Fields to order by">
+    <input type="text" id="orderInput3" placeholder="Order direction">
+    <button onclick="applyOrder()">Order</button>
+  </div>
+  
+    <div>
+    <label for="joinInput1">Join:</label>
+    <input type="text" id="joinInput1" placeholder="Table name">
+    <input type="text" id="joinInput2" placeholder="Table name">
+    <input type="text" id="joinInput3" placeholder="Join condition">
+    <button onclick="performJoin()">Join</button>
+  </div>
+  
+  
+   <div class="display-area" id="displayArea">
+    <!-- Content to be displayed will go here -->
+    <!-- You can dynamically update the content using JavaScript -->
+  </div>
+</div>
+
+<script>
+  // Function to add content to the display area
+  function addContentToDisplayArea() {
+    const displayArea = document.getElementById('displayArea');
+
+    const content = `
+      <h3>Test Case</h3>
+      <p>Testtttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt</p>
+      <ul>
+        <li>test1</li>
+        <li>Test1</li>
+        <li>Tes2</li>
+        <li>Tes2</li>
+        <li>Tes2</li>
+        <li>Tes2</li>
+      </ul>
+    `;
+
+    // Append the content to the display area
+    displayArea.innerHTML = content;
+  }
+
+  // Call the function to add content when the page loads
+  window.onload = addContentToDisplayArea;
+</script>
+
+<script>
+  function selectDatabase() {
+    const selectedDatabase = document.getElementById('databaseSelect').value;
+    console.log(`Selected Database: ${selectedDatabase}`);
+  }
+
+  function uploadFile() {
+    const fileInput = document.getElementById('fileInput');
+    fileInput.click(); // Trigger the hidden file input
+  }
+
+  function handleFileSelection() {
+    const selectedFile = document.getElementById('fileInput').files[0];
+    if (selectedFile) {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      // Use fetch API 
+      fetch('/upload', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data); // Handle the response 
+      
+      })
+      .catch(error => console.error('Error:', error));
+    }
+  }
+
+  function createTable() {
+    const tableName = document.getElementById('createInput').value;
+    const additionalInfo = document.getElementById('createInput2').value;
+    console.log(`Creating Table: ${tableName}, Additional Info: ${additionalInfo}`);
+
+  }
+  
+
+  function insertData() {
+    const tableName = document.getElementById('insertInput').value;
+    const data = document.getElementById('insertInput2').value;
+    console.log(`Inserting Data into Table: ${tableName}, Data: ${data}`);
+  }
+
+  function updateData() {
+    const tableName = document.getElementById('updateInput').value;
+    const updatedData = document.getElementById('updateInput2').value;
+    const condition = document.getElementById('updateInput3').value;
+    console.log(`Updating Data in Table: ${tableName}, Updated Data: ${updatedData}, Condition: ${condition}`);
+  }
+
+  function projectFields() {
+    const tableName = document.getElementById('projectionInput').value;
+    const fieldsToProject = document.getElementById('projectionInput2').value;
+    console.log(`Projecting Fields in Table: ${tableName}, Fields: ${fieldsToProject}`);
+  }
+
+  function applyFilter() {
+    const tableName = document.getElementById('filteringInput').value;
+    const filterCriteria = document.getElementById('filteringInput2').value;
+    const fieldsToDisplay = document.getElementById('filteringInput3').value;
+    console.log(`Applying Filter in Table: ${tableName}, Criteria: ${filterCriteria}, Fields: ${fieldsToDisplay}`);
+  }
+
+  function performAggregation() {
+    const tableName = document.getElementById('aggregationInput').value;
+    const aggregationOperation = document.getElementById('aggregationInput2').value;
+    const fieldsToGroupBy = document.getElementById('aggregationInput3').value;
+    console.log(`Performing Aggregation in Table: ${tableName}, Operation: ${aggregationOperation}, Group By: ${fieldsToGroupBy}`);
+  }
+
+  function applyOrder() {
+    const tableName = document.getElementById('orderInput').value;
+    const fieldsToOrderBy = document.getElementById('orderInput2').value;
+    const orderDirection = document.getElementById('orderInput3').value;
+    console.log(`Applying Order in Table: ${tableName}, Order By: ${fieldsToOrderBy}, Direction: ${orderDirection}`);
+  }
+  
+    function performJoin() {
+    const table1 = document.getElementById('joinInput1').value;
+    const table2 = document.getElementById('joinInput2').value;
+    const joinCondition = document.getElementById('joinInput3').value;
+    console.log(`Performing Join: ${table1} JOIN ${table2} ON ${joinCondition}`);
+    // implement the actual join here later
+  }
+  
+</script>
+</body>
+</html>
