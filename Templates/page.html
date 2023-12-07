@@ -123,7 +123,7 @@
     <label for="updateInput">Update:</label>
     <input type="text" id="updateInput" placeholder="Table name">
     <input type="text" id="updateInput2" placeholder="Updated data">
-    <input type="text" id="updateInput3" placeholder="Condition">
+    <input type="text" id="updateInput3" placeholder="original data">
     <button onclick="updateData()">Update</button>
   </div>
 
@@ -262,11 +262,31 @@
 
 
   function updateData() {
-    const tableName = document.getElementById('updateInput').value;
-    const updatedData = document.getElementById('updateInput2').value;
-    const condition = document.getElementById('updateInput3').value;
-    console.log(`Updating Data in Table: ${tableName}, Updated Data: ${updatedData}, Condition: ${condition}`);
-  }
+        const tableName = document.getElementById('updateInput').value;
+        const updatedData = document.getElementById('updateInput2').value;
+        const condition = document.getElementById('updateInput3').value;
+
+        // Make an AJAX request to the /update route
+        fetch('/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `tableName=${tableName}&updatedData=${updatedData}&condition=${condition}`,
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                addContentToDisplayArea('Update successful');
+            } else {
+                addContentToDisplayArea(`Update failed: ${result.error}`);
+            }
+        })
+        .catch(error => {
+            console.error('Error during update:', error);
+            addContentToDisplayArea('Error during update. Please check the console for details.');
+        });
+    }
 
   function projectFields() {
     const tableName = document.getElementById('projectionInput').value;

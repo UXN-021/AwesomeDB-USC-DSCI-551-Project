@@ -49,13 +49,16 @@ def delete_data():
     result = db_engine.delete_data(table_name, condition)
     return jsonify({'result': result})
 
-@app.route('/update_data', methods=['POST'])
+@app.route('/update', methods=['POST'])
 def update_data():
-    table_name = request.form['table_name']
-    condition = request.form['condition']
-    data = request.form['data'].split(',')
-    result = db_engine.update_data(table_name, condition, data)
-    return jsonify({'result': result})
+    try:
+        table_name = request.form['tableName']
+        condition = request.form['condition']
+        updated_data = request.form['updatedData']
+        result = relational_db.update_data(table_name, condition, updated_data.split(','))
+        return jsonify({'success': result})
+    except Exception as e:
+        return jsonify({'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
