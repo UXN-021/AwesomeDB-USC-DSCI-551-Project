@@ -32,16 +32,15 @@ def create_table():
     result = db_engine.create_table(table_name, fields)
     return jsonify({'result': result})
 
-@app.route('/insert_data', methods=['POST'])
+@app.route('/insert', methods=['POST'])
 def insert_data():
     try:
         table_name = request.form['table_name']
         data = request.form['data']
-        data_list = [item.strip() for item in data.split(',')]
-        success = relational_db.insert_data(table_name, data_list)
-        return "Data inserted successfully" if success else "Failed to insert data", 200
+        result = relational_db.insert_data(table_name, data.split(','))
+        return jsonify({'success': result})
     except Exception as e:
-        return str(e), 500
+        return jsonify({'error': str(e)})
 
 @app.route('/delete_data', methods=['POST'])
 def delete_data():
@@ -60,4 +59,3 @@ def update_data():
 
 if __name__ == '__main__':
     app.run(debug=True)
-

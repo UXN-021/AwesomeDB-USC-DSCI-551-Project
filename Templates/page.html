@@ -181,28 +181,14 @@
 
 <script>
   // Function to add content to the display area
-  function addContentToDisplayArea() {
+
+    function addContentToDisplayArea(content) {
     const displayArea = document.getElementById('displayArea');
-
-    const content = `
-      <h3>Test Case</h3>
-      <p>Testtttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt</p>
-      <ul>
-        <li>test1</li>
-        <li>Test1</li>
-        <li>Tes2</li>
-        <li>Tes2</li>
-        <li>Tes2</li>
-        <li>Tes2</li>
-      </ul>
-    `;
-
-    // Append the content to the display area
     displayArea.innerHTML = content;
   }
 
-  // Call the function to add content when the page loads
-  window.onload = addContentToDisplayArea;
+  // // Call the function to add content when the page loads
+  // window.onload = addContentToDisplayArea;
 </script>
 
 <script>
@@ -247,8 +233,33 @@
   function insertData() {
     const tableName = document.getElementById('insertInput').value;
     const data = document.getElementById('insertInput2').value;
-    console.log(`Inserting Data into Table: ${tableName}, Data: ${data}`);
+
+    // Make an AJAX request to the Flask /insert route
+    fetch('/insert', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        'table_name': tableName,
+        'data': data,
+      }),
+    })
+    .then(response => response.json())
+    .then(result => {
+      if (result.success) {
+        addContentToDisplayArea('Insert successful');
+      } else {
+        addContentToDisplayArea(`Error: ${result.error}`);
+      }
+    })
+    .catch(error => {
+      addContentToDisplayArea(`Error: ${error}`);
+    });
   }
+
+
+
 
   function updateData() {
     const tableName = document.getElementById('updateInput').value;
