@@ -398,8 +398,9 @@ class Relational(BaseEngine):
                     cur_group_result += cur_aggregate_field_value
                 elif aggregate_method == "avg":
                     if cur_group_result is None:
-                        cur_group_result = (0, 0)
-                    cur_group_result = (cur_group_result[0] + cur_aggregate_field_value, cur_group_result[1] + 1)
+                        cur_group_result = [0, 0]
+                    cur_group_result[0] += cur_aggregate_field_value
+                    cur_group_result[1] += 1
                 elif aggregate_method == "count":
                     if cur_group_result is None:
                         cur_group_result = 0

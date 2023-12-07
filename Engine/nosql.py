@@ -7,7 +7,7 @@ import re
 from Engine.base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE, TEMP_DIR
 from utils.DocElement import DocElement
-from utils.util import clear_temp_files, mix_key
+from utils.util import add_key, clear_temp_files, get_key_val, mix_key
 
 class NoSQL(BaseEngine):
     def __init__(self):
@@ -165,6 +165,80 @@ class NoSQL(BaseEngine):
                 doc = self._next_doc(f)
         clear_temp_files()
         print("order succeeded")
+        return True
+    
+    def aggregate(self, table_name: str, aggregate_method: str, aggregate_field: str, group_field: str) -> bool:
+        # check if table exists
+        if not self._table_exists(table_name):
+            print(f"Table {table_name} does not exist!")
+            return True
+        
+        # do external sorting
+        temp_sorted_file = self._external_sort(table_name, group_field, "asc")
+        # aggregate
+        with open(temp_sorted_file, 'r') as f:
+            doc = self._next_doc(f)
+            if doc is None:
+                print("No data to aggregate!")
+                return True
+            # initialize the group
+            cur_group_result = None
+            pre_group_by_field_value = None
+            while doc is not None:
+                # get the group_by_field value of the current doc
+                cur_group_by_field_value = doc[group_field]
+                # if the group_by_field value changes, output the aggregate result of the previous group
+                if cur_group_by_field_value != pre_group_by_field_value and pre_group_by_field_value is not None:
+                    if cur_group_result is not None and aggregate_method == "avg":
+                        cur_group_result = round(get_key_val(cur_group_result[0]) / cur_group_result[1], 2)
+                    elif cur_group_by_field_value is not None and (aggregate_method == "min" or aggregate_method == "max" or aggregate_method == "sum"):
+                        cur_group_result = get_key_val(cur_group_result)
+                    if cur_group_result is None:
+                        cur_group_result = 0
+                    self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result})
+                    # reset the group result
+                    cur_group_result = None
+                # if the current row is in the same group as the previous row, update the aggregate result
+                if aggregate_field in doc:
+                    cur_aggregate_field_value = mix_key(doc[aggregate_field])
+                else:
+                    cur_aggregate_field_value = mix_key(0)
+                if aggregate_method == "sum":
+                    if cur_group_result is None:
+                        cur_group_result = mix_key(0)
+                    cur_group_result = add_key(cur_group_result, cur_aggregate_field_value)
+                elif aggregate_method == "avg":
+                    if cur_group_result is None:
+                        cur_group_result = [mix_key(0), 0]
+                    cur_group_result[0] = add_key(cur_group_result[0], cur_aggregate_field_value)
+                    cur_group_result[1] += 1
+                elif aggregate_method == "count":
+                    if cur_group_result is None:
+                        cur_group_result = 0
+                    cur_group_result += 1
+                elif aggregate_method == "max":
+                    if cur_group_result is None:
+                        cur_group_result = cur_aggregate_field_value
+                    else:
+                        cur_group_result = max(cur_group_result, cur_aggregate_field_value)
+                elif aggregate_method == "min":
+                    if cur_group_result is None:
+                        cur_group_result = cur_aggregate_field_value
+                    else:
+                        cur_group_result = min(cur_group_result, cur_aggregate_field_value)
+                doc = self._next_doc(f)
+                pre_group_by_field_value = cur_group_by_field_value
+            # output the aggregate result of the last group
+            if doc is None and pre_group_by_field_value is not None:
+                if cur_group_result is not None and aggregate_method == "avg":
+                    cur_group_result = round(get_key_val(cur_group_result[0]) / cur_group_result[1], 2)
+                elif cur_group_by_field_value is not None and (aggregate_method == "min" or aggregate_method == "max" or aggregate_method == "sum"):
+                    cur_group_result = get_key_val(cur_group_result)
+                if cur_group_result is None:
+                    cur_group_result = 0
+                self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result})
+        clear_temp_files()
+        print("aggregation succeeded")
         return True
     
     # ========================================================

@@ -40,6 +40,20 @@ def mix_key(val):
             return (1, val)
         else:
             return (0, val)
+        
+def get_key_val(key):
+     return key[1]
+
+def add_key(key1, key2):
+    if key1[0] == key2[0]:
+        return (key1[0], key1[1] + key2[1])
+    else:
+        rtn = 0
+        if key1[0] == 1:
+            rtn += key1[1]
+        if key2[0] == 1:
+            rtn += key2[1]
+    return (1, rtn)
 
 # ========================================================
 #                   For the temp folder
