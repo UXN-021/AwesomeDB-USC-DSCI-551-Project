@@ -106,7 +106,7 @@
   <div>
     <label for="createInput">Create:</label>
     <input type="text" id="createInput" placeholder="Table name">
-    <input type="text" id="createInput2" placeholder="Additional info">
+    <input type="text" id="createInput2" placeholder="field">
     <button onclick="createTable()">Create</button>
   </div>
 
@@ -116,6 +116,15 @@
     <input type="text" id="insertInput" placeholder="Table name">
     <input type="text" id="insertInput2" placeholder="Data">
     <button onclick="insertData()">Insert</button>
+  </div>
+
+  <!-- delete Data Section -->
+
+  <div>
+    <label for="deleteInput">Delete:</label>
+    <input type="text" id="deleteInput" placeholder="Table name">
+    <input type="text" id="deleteInput2" placeholder="Condition">
+    <button onclick="deleteData()">Delete</button>
   </div>
 
   <!-- Update Data Section -->
@@ -240,11 +249,101 @@ function addContentToDisplayArea(content) {
   }
 
   function createTable() {
-    const tableName = document.getElementById('createInput').value;
-    const additionalInfo = document.getElementById('createInput2').value;
-    console.log(`Creating Table: ${tableName}, Additional Info: ${additionalInfo}`);
+    // Get values from input fields
+    var tableName = document.getElementById('createInput').value;
+    var field = document.getElementById('createInput2').value;
 
-  }
+    // Log values before sending the request
+    console.log('Table Name:', tableName);
+    console.log('Fields:', field);
+
+    // Send a POST request using the Fetch API
+    fetch('/create_table', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            table_name: tableName,
+            fields: field
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        // Check if the element with id 'resultMessage' exists before setting innerText
+        var resultMessageElement = document.getElementById('resultMessage');
+        if (resultMessageElement) {
+            resultMessageElement.innerText = data.result;
+        } else {
+            console.error('Element with id "resultMessage" not found.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+
+        // Check if the element with id 'resultMessage' exists before setting innerText
+        var resultMessageElement = document.getElementById('resultMessage');
+        if (resultMessageElement) {
+            resultMessageElement.innerText = 'Error occurred while creating the table.';
+        } else {
+            console.error('Element with id "resultMessage" not found.');
+        }
+    });
+
+    // Prevent the default form submission
+    return false;
+}
+
+  // function createTable() {
+  //       // Get form values
+  //       var tableName = document.getElementById('createInput').value;
+  //       var field = document.getElementById('createInput2').value;
+
+  //       console.log('Table Name:', tableName);
+  //   console.log('Fields:', field);
+
+  //       // Check for empty values
+  //       if (!tableName || !field) {
+  //           document.getElementById('resultMessage').innerText = 'Table name and field cannot be empty.';
+  //           return false;
+  //       }
+
+  //       // Send a POST request using the Fetch API
+  //       fetch('/create_table', {
+  //           method: 'POST',
+  //           headers: {
+  //               'Content-Type': 'application/json'
+  //           },
+  //           body: JSON.stringify({
+  //               table_name: tableName,
+  //               fields: field  // Send fields as a single string
+  //           })
+  //       })
+  //       .then(response => {
+  //           // Check for successful response status
+  //           if (!response.ok) {
+  //               throw new Error(`HTTP error! Status: ${response.status}`);
+  //           }
+  //           return response.json();
+  //       })
+  //       .then(data => {
+  //           // Handle the response data
+  //           console.log(data);
+  //           document.getElementById('resultMessage').innerText = data.result;
+  //       })
+  //       .catch(error => {
+  //           console.error('Error:', error);
+  //           document.getElementById('resultMessage').innerText = 'Error occurred while creating the table.';
+  //       });
+
+  //       // Prevent the default form submission
+  //       return false;
+  //   }
   
 
   function insertData() {
@@ -411,6 +510,47 @@ function applyFilter() {
     .catch(error => {
         addContentToDisplayArea(`Error: ${error}`);
     });
+}
+
+function deleteData() {
+    var tableName = document.getElementById('deleteInput').value;
+    var condition = document.getElementById('deleteInput2').value;
+
+    fetch('/delete_data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            table_name: tableName,
+            condition: condition
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        var resultMessageElement = document.getElementById('resultMessage');
+        if (resultMessageElement) {
+            resultMessageElement.innerText = data.result;
+        } else {
+            console.error('Element with id "resultMessage" not found.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        var resultMessageElement = document.getElementById('resultMessage');
+        if (resultMessageElement) {
+            resultMessageElement.innerText = 'Error occurred while deleting data.';
+        } else {
+            console.error('Element with id "resultMessage" not found.');
+        }
+    });
+
+    return false;
 }
 
 function performAggregation() {

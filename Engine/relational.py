@@ -211,43 +211,44 @@ class Relational(BaseEngine):
         print("selection succeeded", file=io_output)
         return True
 
-    def filtering(self, table_name: str, fields: list, condition: str, io_output=sys.stdout) -> bool:
-        # check if the table exists
-        if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!", file=io_output)
-            return True
-        table_schema = self._get_table_schema(table_name)
-        table_types = self._get_table_types(table_name)
-        projection_schema = []
-        if fields == ['*']:
-            projection_schema = table_schema
-        else:
-            # check if the fields are in the table schema
-            for field in fields:
-                if not self._field_exists_in_schema(table_schema, field):
-                    print(f"Field {field} does not exist.", file=io_output)
-                    return True
-            # create a schema for the projection table
-            for field in fields:
-                projection_schema.append(field)
-        # get the format string for printing
-        format_str = self._get_format_str(projection_schema, FIELD_PRINT_LEN)
-        # print the header
-        self._print_table_header(projection_schema, format_str, io_output=io_output)
-        # iterate through all chunks and print the specified fields to console
-        for chunk in self._get_table_chunks(table_name):
-            with open(chunk, "r") as c:
-                csv_reader = csv.reader(c)
-                typed_rows = self._read_typed_rows(table_types, csv_reader)
-                for typed_row in typed_rows:
-                    # skip the rows that do not meet the condition
-                    if not self._row_meets_condition(table_schema, typed_row, condition):
-                        continue
-                    row_dict = self._row_to_dict(table_schema, typed_row)
-                    # print the row
-                    self._print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN, io_output=io_output)
-        print("filtering succeeded", file=io_output)
-        return True
+    # def filtering(self, table_name: str, fields: list, condition: str, io_output=sys.stdout) -> bool:
+    #     # check if the table exists
+    #     if not self._table_exists(table_name):
+    #         print(f"Table {table_name} does not exist!", file=io_output)
+    #         return True
+    #     table_schema = self._get_table_schema(table_name)
+    #     table_types = self._get_table_types(table_name)
+    #     projection_schema = []
+    #     if fields == ['*']:
+    #         projection_schema = table_schema
+    #     else:
+    #         # check if the fields are in the table schema
+    #         for field in fields:
+    #             if not self._field_exists_in_schema(table_schema, field):
+    #                 print(f"Field {field} does not exist.", file=io_output)
+    #                 return True
+    #         # create a schema for the projection table
+    #         for field in fields:
+    #             projection_schema.append(field)
+    #     # get the format string for printing
+    #     format_str = self._get_format_str(projection_schema, FIELD_PRINT_LEN)
+    #     # print the header
+    #     self._print_table_header(projection_schema, format_str, io_output=io_output)
+    #     # iterate through all chunks and print the specified fields to console
+    #     for chunk in self._get_table_chunks(table_name):
+    #         with open(chunk, "r") as c:
+    #             csv_reader = csv.reader(c)
+    #             typed_rows = self._read_typed_rows(table_types, csv_reader)
+    #             for typed_row in typed_rows:
+    #                 # skip the rows that do not meet the condition
+    #                 if not self._row_meets_condition(table_schema, typed_row, condition):
+    #                     continue
+    #                 row_dict = self._row_to_dict(table_schema, typed_row)
+    #                 # print the row
+    #                 self._print_row(row_dict, projection_schema, format_str, FIELD_PRINT_LEN, io_output=io_output)
+    #     print("filtering succeeded", file=io_output)
+    #     return True
+
 
     def order(self, table_name: str, field: str, order_method: str, io_output=sys.stdout) -> bool:
         # check if the table exists

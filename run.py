@@ -21,6 +21,27 @@ relational_db = Relational()
 def index():
     return render_template('page.html')
 
+
+@app.route('/create_table', methods=['POST'])
+def create_table():
+    try:
+        data = request.get_json()
+
+        # Check if 'table_name' key is present
+        if 'table_name' not in data or 'fields' not in data:
+            return jsonify({'error': 'Missing table_name or fields parameter'}), 400
+
+        table_name = data['table_name']
+        fields = data['fields']
+
+        # Perform table creation logic
+        result = relational_db.create_table(table_name, fields)
+
+        return jsonify({'result': result})
+
+    except Exception as e:
+        return jsonify({'error': f'Error occurred: {str(e)}'}), 500
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
@@ -36,13 +57,6 @@ def upload_file():
 
    
 
-@app.route('/create_table', methods=['POST'])
-def create_table():
-    table_name = request.form['table_name']
-    fields = request.form['fields'].split(',')
-    result = db_engine.create_table(table_name, fields)
-    return jsonify({'result': result})
-
 @app.route('/insert', methods=['POST'])
 def insert_data():
     try:
@@ -55,10 +69,18 @@ def insert_data():
 
 @app.route('/delete_data', methods=['POST'])
 def delete_data():
-    table_name = request.form['table_name']
-    condition = request.form['condition']
-    result = db_engine.delete_data(table_name, condition)
-    return jsonify({'result': result})
+    data = request.get_json()
+    table_name = data['table_name']
+    condition = data['condition']
+
+    # Call your delete_data function
+    result = relational_db.delete_data(table_name, condition)
+
+    return jsonify({'result': 'Deletion succeeded' if result else 'Deletion failed'})
+
+@app.route('/delete_form')
+def delete_form():
+    return render_template('delete.html')
 
 @app.route('/update', methods=['POST'])
 def update_data():
@@ -126,7 +148,7 @@ def aggregate():
         aggregate_field = data.get('aggregate_field')
         group_by_field = data.get('group_by_field')
 
-        # Call the aggregate method of your Relational class
+        # Call the aggregate method of Relational class
         result = relational_db.aggregate(
             table_name,
             aggregate_method,
