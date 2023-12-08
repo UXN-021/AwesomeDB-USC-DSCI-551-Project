@@ -124,6 +124,7 @@
                         </div>
                     </div>
                 </div>
+                <!-- Updating -->
                 <div class="card mt-3">
                     <h5 class="card-header">Updating</h5>
                     <div class="card-body">
@@ -148,6 +149,33 @@
                                         onclick="updating()"
                                     >
                                         Update
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Deletion -->
+                <div class="card mt-3">
+                    <h5 class="card-header">Deletion</h5>
+                    <div class="card-body">
+                        <div
+                            class="row d-flex justify-content-center text-center"
+                        >
+                            <div class="col-12">
+                                <div class="input-group">
+                                    <div class="input-group-text">
+                                        Table Name
+                                    </div>
+                                    <input type="text" class="form-control" id="deletionTableName"/>
+                                    <div class="input-group-text">Condition</div>
+                                    <input type="text" class="form-control" id="deletionCondition"/>
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary"
+                                        onclick="deletion()"
+                                    >
+                                        Delete
                                     </button>
                                 </div>
                             </div>

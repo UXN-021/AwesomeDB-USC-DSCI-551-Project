@@ -79,3 +79,20 @@ async function updating() {
         console.log(err)
     }
 }
+
+async function deletion() {
+    const engine = getEngineType();
+    const deletionTableName = document.getElementById("deletionTableName").value;
+    const deletionCondition = document.getElementById("deletionCondition").value;
+    data = {
+        table_name: deletionTableName,
+        condition: deletionCondition,
+        engine: engine
+    }
+    try {
+        res = await post("/deletion", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}
