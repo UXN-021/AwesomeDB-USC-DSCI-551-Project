@@ -1,11 +1,20 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
+from contextlib import contextmanager
 from flask_cors import CORS
 from Engine.relational import Relational  
+from io import TextIOBase
+from io import StringIO
+import io
+import sys
+
+
 
 app = Flask(__name__)
 CORS(app)  
 
-relational_db = Relational()  
+
+relational_db = Relational()
+
 
 
 @app.route('/')
@@ -24,6 +33,8 @@ def upload_file():
             return jsonify({'error': 'No file provided'})
     except Exception as e:
         return jsonify({'error': str(e)})
+
+   
 
 @app.route('/create_table', methods=['POST'])
 def create_table():
@@ -60,20 +71,107 @@ def update_data():
     except Exception as e:
         return jsonify({'error': str(e)})
     
+# @app.route('/projection', methods=['POST'])
+# def project_fields():
+#     try:
+#         table_name = request.form.get('table_name')
+#         fields = request.form.get('fields').split(',')
+
+    
+#         result_content = relational_db.projection(table_name, fields)
+
+        
+#         return jsonify({'success': True, 'content': result_content})
+
+#     except Exception as e:
+#         return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/projection', methods=['POST'])
 def project_fields():
     try:
-        table_name = request.form.get('table_name')
-        fields = request.form.get('fields').split(',')
+        data = request.get_json()
+        table_name = data.get('table_name')
+        fields = data.get('fields').split(',')
 
-    
         result_content = relational_db.projection(table_name, fields)
 
-        
         return jsonify({'success': True, 'content': result_content})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
+
+
+@app.route('/filter', methods=['POST'])
+def apply_filter():
+    try:
+        table_name = request.form.get('table_name')
+        fields = request.form.get('fields').split(',')
+        condition = request.form.get('condition')
+
+        output = relational_db.filtering(table_name, fields, condition)
+
+        return jsonify({'success': True, 'output': output})
+
+    except Exception as e:
+        return jsonify({'error': str(e)})
+    
+
+@app.route('/aggregate', methods=['POST'])
+def aggregate():
+    try:
+        data = request.form
+
+        table_name = data.get('table_name')
+        aggregate_method = data.get('aggregate_method')
+        aggregate_field = data.get('aggregate_field')
+        group_by_field = data.get('group_by_field')
+
+        # Call the aggregate method of your Relational class
+        result = relational_db.aggregate(
+            table_name,
+            aggregate_method,
+            aggregate_field,
+            group_by_field
+        )
+
+        return jsonify({'success': True, 'result': result})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+    
+
+@app.route('/order', methods=['POST'])
+def order():
+    data = request.get_json()
+
+    table_name = data['table_name']
+    order_field = data['field']
+    order_direction = data['order_method']
+
+    # Call the order method from the Relational instance
+    success = relational_db.order(table_name, order_field, order_direction)
+
+    if success:
+        return jsonify({'success': True, 'message': 'Order successful'})
+    else:
+        return jsonify({'success': False, 'error': 'Order failed'})
+    
+@app.route('/join', methods=['POST'])
+def join_tables():
+    try:
+        # Get data from the request
+        table1 = request.form.get('table1')
+        table2 = request.form.get('table2')
+        condition = request.form.get('condition')
+
+        # Perform the join operation
+        result = relational_engine.join(table1, table2, condition)
+
+        return jsonify({'success': True, 'message': 'Join operation successful'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+       
 
 if __name__ == '__main__':
     app.run(debug=True)

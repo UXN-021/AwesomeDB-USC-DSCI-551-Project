@@ -150,8 +150,9 @@
     <input type="text" id="aggregationInput" placeholder="Table name">
     <input type="text" id="aggregationInput2" placeholder="Aggregation operation">
     <input type="text" id="aggregationInput3" placeholder="Fields to group by">
+    <input type="text" id="aggregationInput4" placeholder="Field to aggregate">
     <button onclick="performAggregation()">Aggregate</button>
-  </div>
+</div>
   
 
 
@@ -174,13 +175,12 @@
   
   
    <div class="display-area" id="displayArea">
-    <!-- Content to be displayed will go here -->
-    <!-- You can dynamically update the content using JavaScript -->
+    <!-- Content can be displayed  -->
   </div>
 </div>
 
 <script>
-  // Function to add content to the display area
+
 
 //   function addContentToDisplayArea(content) {
     
@@ -189,18 +189,18 @@
 // }
 
 function addContentToDisplayArea(content) {
-    // Assuming 'displayArea' is a <div> element
     const displayArea = document.getElementById('displayArea');
 
-    // Clear the existing content
+    // Clear existing content
     displayArea.innerHTML = '';
 
-    // Iterate through the content array and add each item
-    content.forEach(item => {
-        const itemElement = document.createElement('p');
-        itemElement.textContent = item;
-        displayArea.appendChild(itemElement);
-    });
+    // Check if content is a string
+    if (typeof content === 'string') {
+        // If content is a string, directly append it to the display area
+        displayArea.appendChild(document.createTextNode(content));
+    } else {
+        console.error('Unknown content type:', content);
+    }
 }
 
   // // Call the function to add content when the page loads
@@ -231,11 +231,12 @@ function addContentToDisplayArea(content) {
       })
       .then(response => response.json())
       .then(data => {
-        console.log(data); // Handle the response 
+        console.log(data); 
       
       })
       .catch(error => console.error('Error:', error));
     }
+
   }
 
   function createTable() {
@@ -308,17 +309,49 @@ function updateData() {
     });
 }
 
+// function projectFields() {
+//     const tableName = document.getElementById('projectionInput').value;
+//     const fieldsToProject = document.getElementById('projectionInput2').value;
+
+//     // Make an AJAX request to the Flask /projection route
+//     fetch('/projection', {
+//         method: 'POST',
+//         headers: {
+//             'Content-Type': 'application/x-www-form-urlencoded',
+//         },
+//         body: new URLSearchParams({
+//             'table_name': tableName,
+//             'fields': fieldsToProject,
+//         }),
+//     })
+//     .then(response => response.json())
+//     .then(result => {
+//         if (result.success) {
+//             // Display the result in the display area
+//             addContentToDisplayArea(result.content);
+//         } else {
+//             addContentToDisplayArea(`Error: ${result.error}`);
+//         }
+//     })
+//     .catch(error => {
+//         addContentToDisplayArea(`Error: ${error}`);
+//     });
+// }
+
 function projectFields() {
-    const tableName = document.getElementById('projectionInput').value;
-    const fieldsToProject = document.getElementById('projectionInput2').value;
+    const tableNameInput = document.getElementById('projectionInput');
+    const fieldsToProjectInput = document.getElementById('projectionInput2');
+
+    const tableName = tableNameInput.value;
+    const fieldsToProject = fieldsToProjectInput.value;
 
     // Make an AJAX request to the Flask /projection route
     fetch('/projection', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Type': 'application/json', // Set the content type to JSON
         },
-        body: new URLSearchParams({
+        body: JSON.stringify({
             'table_name': tableName,
             'fields': fieldsToProject,
         }),
@@ -326,8 +359,10 @@ function projectFields() {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            // Display the result in the display area
             addContentToDisplayArea(result.content);
+            // Clear the input fields
+            tableNameInput.value = '';
+            fieldsToProjectInput.value = '';
         } else {
             addContentToDisplayArea(`Error: ${result.error}`);
         }
@@ -336,34 +371,151 @@ function projectFields() {
         addContentToDisplayArea(`Error: ${error}`);
     });
 }
-  function applyFilter() {
-    const tableName = document.getElementById('filteringInput').value;
-    const filterCriteria = document.getElementById('filteringInput2').value;
-    const fieldsToDisplay = document.getElementById('filteringInput3').value;
-    console.log(`Applying Filter in Table: ${tableName}, Criteria: ${filterCriteria}, Fields: ${fieldsToDisplay}`);
-  }
 
-  function performAggregation() {
+function applyFilter() {
+    const tableNameInput = document.getElementById('filteringInput');
+    const filterCriteriaInput = document.getElementById('filteringInput2');
+    const fieldsToDisplayInput = document.getElementById('filteringInput3');
+
+    const tableName = tableNameInput.value;
+    const filterCriteria = filterCriteriaInput.value;
+    const fieldsToDisplay = fieldsToDisplayInput.value;
+
+    console.log(`Applying Filter in Table: ${tableName}, Criteria: ${filterCriteria}, Fields: ${fieldsToDisplay}`);
+
+    // Make an AJAX request to the Flask /filter route
+    fetch('/filter', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'table_name': tableName,
+            'fields': fieldsToDisplay,
+            'condition': filterCriteria,
+        }),
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            addContentToDisplayArea(result.output);
+            
+            // Clear the input fields
+            tableNameInput.value = '';
+            filterCriteriaInput.value = '';
+            fieldsToDisplayInput.value = '';
+        } else {
+            addContentToDisplayArea(`Error: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        addContentToDisplayArea(`Error: ${error}`);
+    });
+}
+
+function performAggregation() {
     const tableName = document.getElementById('aggregationInput').value;
-    const aggregationOperation = document.getElementById('aggregationInput2').value;
-    const fieldsToGroupBy = document.getElementById('aggregationInput3').value;
-    console.log(`Performing Aggregation in Table: ${tableName}, Operation: ${aggregationOperation}, Group By: ${fieldsToGroupBy}`);
-  }
+    const aggregateMethod = document.getElementById('aggregationInput2').value;
+    const aggregateField = document.getElementById('aggregationInput3').value;
+    const groupByField = document.getElementById('aggregationInput4').value;
+
+    fetch('/aggregate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'table_name': tableName,
+            'aggregate_method': aggregateMethod,
+            'aggregate_field': aggregateField,
+            'group_by_field': groupByField,
+        }),
+    })
+    .then(response => response.json())
+    .then(result => {
+        console.log('Received Result:', result);
+
+        if (result.success) {
+            addContentToDisplayArea(result.result);
+        } else {
+            addContentToDisplayArea(`Error: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error during aggregation:', error);
+        addContentToDisplayArea(`Error: ${error}`);
+    });
+}
+
+function performOrder() {
+    const tableName = document.getElementById('orderInput').value;
+    const orderByField = document.getElementById('orderInput2').value;
+    const orderDirection = document.getElementById('orderInput3').value;
+
+    // Make an AJAX request to the Flask /order route
+    fetch('/order', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            'table_name': tableName,
+            'field': orderByField,
+            'order_method': orderDirection,
+        }),
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            addContentToDisplayArea('Order successful');
+            // Reset input fields
+            document.getElementById('orderInput').value = '';
+            document.getElementById('orderInput2').value = '';
+            document.getElementById('orderInput3').value = '';
+        } else {
+            addContentToDisplayArea(`Order failed: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error during order:', error);
+        addContentToDisplayArea('Error during order. Please check the console for details.');
+    });
+}
+
 
   function applyOrder() {
-    const tableName = document.getElementById('orderInput').value;
-    const fieldsToOrderBy = document.getElementById('orderInput2').value;
-    const orderDirection = document.getElementById('orderInput3').value;
-    console.log(`Applying Order in Table: ${tableName}, Order By: ${fieldsToOrderBy}, Direction: ${orderDirection}`);
+    performOrder();
   }
   
-    function performJoin() {
+  function performJoin() {
     const table1 = document.getElementById('joinInput1').value;
     const table2 = document.getElementById('joinInput2').value;
-    const joinCondition = document.getElementById('joinInput3').value;
-    console.log(`Performing Join: ${table1} JOIN ${table2} ON ${joinCondition}`);
-    // implement the actual join here later
-  }
+    const condition = document.getElementById('joinInput3').value;
+
+    // Make an AJAX request to the Flask /join route
+    fetch('/join', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'table1': table1,
+            'table2': table2,
+            'condition': condition,
+        }),
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            addContentToDisplayArea('Join successful');
+        } else {
+            addContentToDisplayArea(`Error: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        addContentToDisplayArea(`Error: ${error}`);
+    });
+}
   
 </script>
 </body>
