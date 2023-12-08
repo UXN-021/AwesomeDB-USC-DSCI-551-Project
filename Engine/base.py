@@ -163,58 +163,58 @@ class BaseEngine():
 
 
     @abstractmethod
-    def show_tables(self) -> bool:
+    def show_tables(self, output) -> bool:
         pass
 
     @abstractmethod
-    def create_table(self, table_name: str, fields: list) -> bool:
+    def create_table(self, table_name: str, fields: list, output) -> bool:
         pass
 
     @abstractmethod
-    def drop_table(self, table_name: str) -> bool:
+    def drop_table(self, table_name: str, output) -> bool:
         pass
 
     @abstractmethod
-    def insert_data(self, table_name: str, data: list) -> bool:
+    def insert_data(self, table_name: str, data: list, output) -> bool:
         pass
 
     @abstractmethod
-    def delete_data(self, table_name: str, condition: str) -> bool:
+    def delete_data(self, table_name: str, condition: str, output) -> bool:
         pass
 
     @abstractmethod
-    def update_data(self, table_name: str, condition: str, data: list) -> bool:
+    def update_data(self, table_name: str, condition: str, data: list, output) -> bool:
         pass
 
     @abstractmethod
-    def projection(self, table_name: str, fields: list) -> bool:
+    def projection(self, table_name: str, fields: list, output) -> bool:
         pass
 
     @abstractmethod
-    def filtering(self, table_name: str, fields: list, condition: str) -> bool:
+    def filtering(self, table_name: str, fields: list, condition: str, output) -> bool:
         pass
 
     @abstractmethod
-    def join(self, left: str, right: str, condition: str) -> bool:
+    def join(self, left: str, right: str, condition: str, output) -> bool:
         pass
 
     @abstractmethod
-    def group(self, table_name: str, group_field: str) -> bool:
+    def group(self, table_name: str, group_field: str, output) -> bool:
         pass
 
     @abstractmethod
-    def aggregate(self, table_name: str, aggregation_method: str, aggregation_field: str, group_field: str) -> bool:
+    def aggregate(self, table_name: str, aggregation_method: str, aggregation_field: str, group_field: str, output) -> bool:
         pass
 
     @abstractmethod
-    def aggregate_table(self, table_name: str, aggregation_method: str, aggregation_field: str) -> bool:
+    def aggregate_table(self, table_name: str, aggregation_method: str, aggregation_field: str, output) -> bool:
         pass
 
     @abstractmethod
-    def order(self, table_name: str, field: str, order_method: str) -> bool:
+    def order(self, table_name: str, field: str, order_method: str, output) -> bool:
         pass
 
     @abstractmethod
-    def load_data(self, file_name: str) -> bool:
+    def load_data(self, file_name: str, output) -> bool:
         pass
 

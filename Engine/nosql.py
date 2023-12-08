@@ -4,6 +4,7 @@ import operator
 import os
 from queue import PriorityQueue
 import re
+import sys
 from Engine.base import BaseEngine
 from config import BASE_DIR, CHUNK_SIZE, TEMP_DIR
 from utils.DocElement import DocElement
@@ -20,24 +21,24 @@ class NoSQL(BaseEngine):
             if not self.parse_and_execute(input_str):
                 break
 
-    def drop_table(self, table_name: str) -> bool:
+    def drop_table(self, table_name: str, io_output=sys.stdout) -> bool:
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         table_storage_path = self._get_table_path(table_name)
         # delete the table directory
         for file in os.listdir(table_storage_path):
             os.remove(f"{table_storage_path}/{file}")
         os.rmdir(table_storage_path)
-        print("table dropped")
+        print("table dropped", file=io_output)
         return True
 
-    def load_data(self, file_name) -> bool:
+    def load_data(self, file_name, io_output=sys.stdout) -> bool:
         # check if file is csv
         if not file_name.endswith(".csv"):
-            print("file must be a csv file")
+            print("file must be a csv file", file=io_output)
             return True
-        print("loading data...")
+        print("loading data...", file=io_output)
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
         table_storage_path = f"{BASE_DIR}/Storage/NoSQL/{table_name}"
@@ -45,8 +46,8 @@ class NoSQL(BaseEngine):
         if not os.path.exists(table_storage_path):
             os.mkdir(table_storage_path)
         else:
-            print("Cannot load dataset. Table already exists!")
-            return
+            print("Cannot load dataset. Table already exists!", file=io_output)
+            return True
         # read the first line of the csv to find the schema
         with open(csv_file_path, 'r') as f:
             csv_reader = csv.reader(f)
@@ -58,13 +59,13 @@ class NoSQL(BaseEngine):
                 # insert the doc into the table
                 self._insert_doc(table_name, doc)
                 csv_row = next(csv_reader, None)
-        print("loading succeeded")
+        print("loading succeeded", file=io_output)
         return True
     
-    def insert_data(self, table_name: str, data: list) -> bool:
+    def insert_data(self, table_name: str, data: list, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         # convert the data to json
         doc = {}
@@ -74,26 +75,26 @@ class NoSQL(BaseEngine):
             doc[field_name] = self._get_typed_value(field_value)
         # insert the doc into the table
         self._insert_doc(table_name, doc)
-        print("insertion succeeded")
+        print("insertion succeeded", file=io_output)
         return True
     
-    def delete_data(self, table_name: str, condition: str) -> bool:
+    def delete_data(self, table_name: str, condition: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         for chunk in self._get_table_chunks(table_name):
             docs = self._read_docs_from_file(chunk)
             self._clear_file(chunk)
             filtered_docs = filter(lambda doc: not self._doc_meets_condition(doc, condition), docs)
             self._write_docs_to_file(filtered_docs, chunk)
-        print("deletion succeeded")
+        print("deletion succeeded", file=io_output)
         return True
     
-    def update_data(self, table_name: str, condition: str, data: list) -> bool:
+    def update_data(self, table_name: str, condition: str, data: list, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         for chunk in self._get_table_chunks(table_name):
             docs = self._read_docs_from_file(chunk)
@@ -104,13 +105,13 @@ class NoSQL(BaseEngine):
                         field_name, field_value = field_data.split("=")
                         doc[field_name] = self._get_typed_value(field_value)
                 self._write_doc_to_file(doc, chunk)
-        print("update succeeded")
+        print("update succeeded", file=io_output)
         return True
     
-    def projection(self, table_name: str, fields: list) -> bool:
+    def projection(self, table_name: str, fields: list, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         for chunk in self._get_table_chunks(table_name):
             docs = self._read_docs_from_file(chunk)
@@ -124,14 +125,14 @@ class NoSQL(BaseEngine):
                     for field in fields:
                         if field in doc:
                             projected_doc[field] = doc[field]
-                self._print_doc(projected_doc)
-        print("projection succeeded")
+                self._print_doc(projected_doc, io_output=io_output)
+        print("projection succeeded", file=io_output)
         return True
     
-    def filtering(self, table_name: str, fields: list, condition: str) -> bool:
+    def filtering(self, table_name: str, fields: list, condition: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         for chunk in self._get_table_chunks(table_name):
             docs = self._read_docs_from_file(chunk)
@@ -146,14 +147,14 @@ class NoSQL(BaseEngine):
                         for field in fields:
                             if field in doc:
                                 projected_doc[field] = doc[field]
-                    self._print_doc(projected_doc)
-        print("filtering succeeded")
+                    self._print_doc(projected_doc, io_output=io_output)
+        print("filtering succeeded", file=io_output)
         return True
     
-    def order(self, table_name: str, field: str, order_method: str) -> bool:
+    def order(self, table_name: str, field: str, order_method: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         # do external sorting
         temp_sorted_file = self._external_sort(table_name, field, order_method)
@@ -161,16 +162,16 @@ class NoSQL(BaseEngine):
         with open(temp_sorted_file, 'r') as f:
             doc = self._next_doc(f)
             while doc is not None:
-                self._print_doc(doc)
+                self._print_doc(doc, io_output=io_output)
                 doc = self._next_doc(f)
         clear_temp_files()
-        print("order succeeded")
+        print("order succeeded", file=io_output)
         return True
     
-    def aggregate(self, table_name: str, aggregate_method: str, aggregate_field: str, group_field: str) -> bool:
+    def aggregate(self, table_name: str, aggregate_method: str, aggregate_field: str, group_field: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         
         # do external sorting
@@ -179,7 +180,7 @@ class NoSQL(BaseEngine):
         with open(temp_sorted_file, 'r') as f:
             doc = self._next_doc(f)
             if doc is None:
-                print("No data to aggregate!")
+                print("No data to aggregate!", file=io_output)
                 return True
             # initialize the group
             cur_group_result = None
@@ -195,7 +196,7 @@ class NoSQL(BaseEngine):
                         cur_group_result = get_key_val(cur_group_result)
                     if cur_group_result is None:
                         cur_group_result = 0
-                    self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result})
+                    self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result}, io_output=io_output)
                     # reset the group result
                     cur_group_result = None
                 # if the current row is in the same group as the previous row, update the aggregate result
@@ -236,15 +237,15 @@ class NoSQL(BaseEngine):
                     cur_group_result = get_key_val(cur_group_result)
                 if cur_group_result is None:
                     cur_group_result = 0
-                self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result})
+                self._print_doc({group_field: pre_group_by_field_value, f"{aggregate_method}({aggregate_field})": cur_group_result}, io_output=io_output)
         clear_temp_files()
-        print("aggregation succeeded")
+        print("aggregation succeeded", file=io_output)
         return True
     
-    def aggregate_table(self, table_name: str, aggregate_method: str, aggregate_field: str) -> bool:
+    def aggregate_table(self, table_name: str, aggregate_method: str, aggregate_field: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         # directly iterate through all chunks and aggregate
         cur_result = None
@@ -284,14 +285,14 @@ class NoSQL(BaseEngine):
             cur_result = get_key_val(cur_result)
         if cur_result is None:
             cur_result = 0
-        self._print_doc({f"{aggregate_method}({aggregate_field})": cur_result})
-        print("aggregation succeeded")
+        self._print_doc({f"{aggregate_method}({aggregate_field})": cur_result}, io_output=io_output)
+        print("aggregation succeeded", file=io_output)
         return True
     
-    def group(self, table_name: str, group_field: str) -> bool:
+    def group(self, table_name: str, group_field: str, io_output=sys.stdout) -> bool:
         # check if table exists
         if not self._table_exists(table_name):
-            print(f"Table {table_name} does not exist!")
+            print(f"Table {table_name} does not exist!", file=io_output)
             return True
         
         # do external sorting
@@ -300,7 +301,7 @@ class NoSQL(BaseEngine):
         with open(temp_sorted_file, 'r') as f:
             doc = self._next_doc(f)
             if doc is None:
-                print("No data to group!")
+                print("No data to group!", file=io_output)
                 return True
             pre_group_by_field_value = None
             while doc is not None:
@@ -308,14 +309,14 @@ class NoSQL(BaseEngine):
                 cur_group_by_field_value = doc[group_field]
                 # if the group_by_field value changes, output the group result of the previous group
                 if cur_group_by_field_value != pre_group_by_field_value and pre_group_by_field_value is not None:
-                    self._print_doc({group_field: pre_group_by_field_value})
+                    self._print_doc({group_field: pre_group_by_field_value}, io_output=io_output)
                 doc = self._next_doc(f)
                 pre_group_by_field_value = cur_group_by_field_value
             # output the group result of the last group
             if doc is None and pre_group_by_field_value is not None:
-                self._print_doc({group_field: pre_group_by_field_value})
+                self._print_doc({group_field: pre_group_by_field_value}, io_output=io_output)
         clear_temp_files()
-        print("grouping succeeded")
+        print("grouping succeeded", file=io_output)
         return True
     
     # ========================================================
@@ -547,6 +548,6 @@ class NoSQL(BaseEngine):
     #                   For printing docs
     # ========================================================
     
-    def _print_doc(self, doc: dict) -> None:
-        print(json.dumps(doc, indent=4))
+    def _print_doc(self, doc: dict, io_output=sys.stdout) -> None:
+        print(json.dumps(doc, indent=4), file=io_output)
             
