@@ -21,6 +21,25 @@ class NoSQL(BaseEngine):
             if not self.parse_and_execute(input_str):
                 break
 
+    def show_tables(self, io_output=sys.stdout) -> bool:
+        for file in os.listdir(f"{BASE_DIR}/Storage/NoSQL"):
+            if os.path.isdir(f"{BASE_DIR}/Storage/NoSQL/{file}"):
+                self._print_doc({"table": file}, io_output=io_output)
+        return True
+    
+    def create_table(self, table_name: str, fields: list, io_output=sys.stdout) -> bool:
+        # check if table already exists
+        if self._table_exists(table_name):
+            print(f"Table {table_name} already exists!", file=io_output)
+            return True
+        if len(fields) != 0 and fields[0] != "":
+            print("Warning: NoSQL does not support schema!", file=io_output)
+        table_storage_path = self._get_table_path(table_name)
+        # create the table directory
+        os.mkdir(table_storage_path)
+        print("table created", file=io_output)
+        return True
+
     def drop_table(self, table_name: str, io_output=sys.stdout) -> bool:
         if not self._table_exists(table_name):
             print(f"Table {table_name} does not exist!", file=io_output)
