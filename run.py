@@ -40,15 +40,12 @@ def select_database():
 def create_table():
     try:
         data = request.get_json()
-
-        # Check if 'table_name' key is present
         if 'table_name' not in data or 'fields' not in data:
             return jsonify({'error': 'Missing table_name or fields parameter'}), 400
-
         table_name = data['table_name']
-        fields = data['fields']
+        fields_str = data['fields']
 
-        # Perform table creation logic
+        fields = [field.strip() for field in fields_str.split(',')]
         result = selected_db.create_table(table_name, fields)
 
         return jsonify({'result': result})
