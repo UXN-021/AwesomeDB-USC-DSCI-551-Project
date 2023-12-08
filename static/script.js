@@ -113,3 +113,22 @@ async function insertion() {
         console.log(err)
     }
 }
+
+async function sorting() {
+    const engine = getEngineType();
+    const sortingTableName = document.getElementById("sortingTableName").value;
+    const sortingField = document.getElementById("sortingField").value;
+    const sortingASC = document.getElementById("sortingASC").checked;
+    data = {
+        table_name: sortingTableName,
+        field: sortingField,
+        method: sortingASC ? "asc" : "desc",
+        engine: engine
+    }
+    try {
+        res = await post("/sorting", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}

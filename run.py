@@ -116,5 +116,26 @@ def insertion():
         return "Error occurred"
     return send_from_directory(app.config["RESULT_DIR"], "result.txt")
 
+@app.route('/sorting', methods=['POST'])
+def sorting():
+    # Get data from request
+    data = request.get_json()
+    engine = data.get('engine')
+    table_name = data.get('table_name')
+    field = data.get('field')
+    method = data.get('method')
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].order(table_name, field, method, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].order(table_name, field, method, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+    return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+
 if __name__ == "__main__":
 	app.run()
