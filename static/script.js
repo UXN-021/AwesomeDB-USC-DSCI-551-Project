@@ -41,3 +41,22 @@ async function projection() {
         console.log(err)
     }
 }
+
+async function filtering() {
+    const engine = getEngineType();
+    const filteringTableName = document.getElementById("filteringTableName").value;
+    const filteringFields = document.getElementById("filteringFields").value;
+    const filteringCondition = document.getElementById("filteringCondition").value;
+    data = {
+        table_name: filteringTableName,
+        fields: filteringFields,
+        condition: filteringCondition,
+        engine: engine
+    }
+    try {
+        res = await post("/filtering", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}

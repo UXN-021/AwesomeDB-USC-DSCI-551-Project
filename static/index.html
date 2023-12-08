@@ -105,16 +105,17 @@
                                     <div class="input-group-text">
                                         Table Name
                                     </div>
-                                    <input type="text" class="form-control" />
+                                    <input type="text" class="form-control" id="filteringTableName"/>
                                     <div class="input-group-text">Field(s)</div>
-                                    <input type="text" class="form-control" />
+                                    <input type="text" class="form-control" id="filteringFields"/>
                                     <div class="input-group-text">
                                         Condition
                                     </div>
-                                    <input type="text" class="form-control" />
+                                    <input type="text" class="form-control" id="filteringCondition"/>
                                     <button
                                         type="button"
                                         class="btn btn-primary"
+                                        onclick="filtering()"
                                     >
                                         Show Data
                                     </button>
