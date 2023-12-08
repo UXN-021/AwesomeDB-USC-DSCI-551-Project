@@ -182,10 +182,26 @@
 <script>
   // Function to add content to the display area
 
-    function addContentToDisplayArea(content) {
+//   function addContentToDisplayArea(content) {
+    
+//     const displayArea = document.getElementById('displayArea');
+//     displayArea.innerHTML = content;
+// }
+
+function addContentToDisplayArea(content) {
+    // Assuming 'displayArea' is a <div> element
     const displayArea = document.getElementById('displayArea');
-    displayArea.innerHTML = content;
-  }
+
+    // Clear the existing content
+    displayArea.innerHTML = '';
+
+    // Iterate through the content array and add each item
+    content.forEach(item => {
+        const itemElement = document.createElement('p');
+        itemElement.textContent = item;
+        displayArea.appendChild(itemElement);
+    });
+}
 
   // // Call the function to add content when the page loads
   // window.onload = addContentToDisplayArea;
@@ -292,12 +308,34 @@ function updateData() {
     });
 }
 
-  function projectFields() {
+function projectFields() {
     const tableName = document.getElementById('projectionInput').value;
     const fieldsToProject = document.getElementById('projectionInput2').value;
-    console.log(`Projecting Fields in Table: ${tableName}, Fields: ${fieldsToProject}`);
-  }
 
+    // Make an AJAX request to the Flask /projection route
+    fetch('/projection', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'table_name': tableName,
+            'fields': fieldsToProject,
+        }),
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Display the result in the display area
+            addContentToDisplayArea(result.content);
+        } else {
+            addContentToDisplayArea(`Error: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        addContentToDisplayArea(`Error: ${error}`);
+    });
+}
   function applyFilter() {
     const tableName = document.getElementById('filteringInput').value;
     const filterCriteria = document.getElementById('filteringInput2').value;

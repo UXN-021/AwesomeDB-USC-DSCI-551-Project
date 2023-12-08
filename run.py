@@ -59,6 +59,21 @@ def update_data():
         return jsonify({'success': result})
     except Exception as e:
         return jsonify({'error': str(e)})
+    
+@app.route('/projection', methods=['POST'])
+def project_fields():
+    try:
+        table_name = request.form.get('table_name')
+        fields = request.form.get('fields').split(',')
+
+    
+        result_content = relational_db.projection(table_name, fields)
+
+        
+        return jsonify({'success': True, 'content': result_content})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
