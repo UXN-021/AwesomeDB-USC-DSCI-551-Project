@@ -236,57 +236,61 @@
 
     // Make an AJAX request to the Flask /insert route
     fetch('/insert', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        'table_name': tableName,
-        'data': data,
-      }),
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'table_name': tableName,
+            'data': data,
+        }),
     })
     .then(response => response.json())
     .then(result => {
-      if (result.success) {
-        addContentToDisplayArea('Insert successful');
-      } else {
-        addContentToDisplayArea(`Error: ${result.error}`);
-      }
+        if (result.success) {
+            addContentToDisplayArea('Insert successful');
+            // Reset input fields
+            document.getElementById('insertInput').value = '';
+            document.getElementById('insertInput2').value = '';
+        } else {
+            addContentToDisplayArea(`Error: ${result.error}`);
+        }
     })
     .catch(error => {
-      addContentToDisplayArea(`Error: ${error}`);
+        addContentToDisplayArea(`Error: ${error}`);
     });
-  }
+}
 
+function updateData() {
+    const tableName = document.getElementById('updateInput').value;
+    const updatedData = document.getElementById('updateInput2').value;
+    const condition = document.getElementById('updateInput3').value;
 
-
-
-  function updateData() {
-        const tableName = document.getElementById('updateInput').value;
-        const updatedData = document.getElementById('updateInput2').value;
-        const condition = document.getElementById('updateInput3').value;
-
-        // Make an AJAX request to the /update route
-        fetch('/update', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `tableName=${tableName}&updatedData=${updatedData}&condition=${condition}`,
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                addContentToDisplayArea('Update successful');
-            } else {
-                addContentToDisplayArea(`Update failed: ${result.error}`);
-            }
-        })
-        .catch(error => {
-            console.error('Error during update:', error);
-            addContentToDisplayArea('Error during update. Please check the console for details.');
-        });
-    }
+    // Make an AJAX request to the /update route
+    fetch('/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `tableName=${tableName}&updatedData=${updatedData}&condition=${condition}`,
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            addContentToDisplayArea('Update successful');
+            // Reset input fields
+            document.getElementById('updateInput').value = '';
+            document.getElementById('updateInput2').value = '';
+            document.getElementById('updateInput3').value = '';
+        } else {
+            addContentToDisplayArea(`Update failed: ${result.error}`);
+        }
+    })
+    .catch(error => {
+        console.error('Error during update:', error);
+        addContentToDisplayArea('Error during update. Please check the console for details.');
+    });
+}
 
   function projectFields() {
     const tableName = document.getElementById('projectionInput').value;
