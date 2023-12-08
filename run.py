@@ -73,7 +73,7 @@ def delete_data():
     table_name = data['table_name']
     condition = data['condition']
 
-    # Call your delete_data function
+
     result = relational_db.delete_data(table_name, condition)
 
     return jsonify({'result': 'Deletion succeeded' if result else 'Deletion failed'})
@@ -148,7 +148,7 @@ def aggregate():
         aggregate_field = data.get('aggregate_field')
         group_by_field = data.get('group_by_field')
 
-        # Call the aggregate method of Relational class
+        # Call the aggregate 
         result = relational_db.aggregate(
             table_name,
             aggregate_method,
@@ -186,8 +186,7 @@ def join_tables():
         table2 = request.form.get('table2')
         condition = request.form.get('condition')
 
-        # Perform the join operation
-        result = relational_engine.join(table1, table2, condition)
+        result = relational_db.join(table1, table2, condition)
 
         return jsonify({'success': True, 'message': 'Join operation successful'})
     except Exception as e:
