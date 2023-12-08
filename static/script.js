@@ -12,7 +12,6 @@ async function post(url, data){
 
 function display(result) {
     const resultDisplay = document.getElementById("resultDisplay");
-    console.log(result)
     resultDisplay.innerHTML = result;
 }
 
@@ -127,6 +126,25 @@ async function sorting() {
     }
     try {
         res = await post("/sorting", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}
+
+async function join() {
+    const engine = getEngineType();
+    const joinLeftTable = document.getElementById("joinLeftTable").value;
+    const joinRightTable = document.getElementById("joinRightTable").value;
+    const joinCondition = document.getElementById("joinCondition").value;
+    data = {
+        left_table: joinLeftTable,
+        right_table: joinRightTable,
+        condition: joinCondition,
+        engine: engine
+    }
+    try {
+        res = await post("/join", data)
         display(res)
     } catch(err) {
         console.log(err)

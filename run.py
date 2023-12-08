@@ -137,5 +137,26 @@ def sorting():
         return "Error occurred"
     return send_from_directory(app.config["RESULT_DIR"], "result.txt")
 
+@app.route('/join', methods=['POST'])
+def join():
+    # Get data from request
+    data = request.get_json()
+    engine = data.get('engine')
+    left_table = data.get('left_table')
+    right_table = data.get('right_table')
+    condition = data.get('condition')
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].join(left_table, right_table, condition, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].join(left_table, right_table, condition, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+    return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+
 if __name__ == "__main__":
 	app.run()
