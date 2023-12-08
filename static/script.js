@@ -60,3 +60,22 @@ async function filtering() {
         console.log(err)
     }
 }
+
+async function updating() {
+    const engine = getEngineType();
+    const updatingTableName = document.getElementById("updatingTableName").value;
+    const updatingCondition = document.getElementById("updatingCondition").value;
+    const updatingData = document.getElementById("updatingData").value;
+    data = {
+        table_name: updatingTableName,
+        condition: updatingCondition,
+        data: updatingData,
+        engine: engine
+    }
+    try {
+        res = await post("/updating", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}

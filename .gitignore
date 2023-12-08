@@ -4,6 +4,7 @@ Storage/Relational/*
 ToBeLoaded/*
 projEnv
 Temp/*
+Results/*
 !.gitkeep
 !.keep
 
