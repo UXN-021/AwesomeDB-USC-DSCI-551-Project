@@ -96,5 +96,25 @@ def deletion():
         return "Error occurred"
     return send_from_directory(app.config["RESULT_DIR"], "result.txt")
 
+@app.route('/insertion', methods=['POST'])
+def insertion():
+    # Get data from request
+    data = request.get_json()
+    engine = data.get('engine')
+    table_name = data.get('table_name')
+    data_val = data.get('data').split(',')
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].insert_data(table_name, data_val, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].insert_data(table_name, data_val, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+    return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+
 if __name__ == "__main__":
 	app.run()

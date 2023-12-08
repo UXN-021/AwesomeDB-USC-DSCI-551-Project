@@ -96,3 +96,20 @@ async function deletion() {
         console.log(err)
     }
 }
+
+async function insertion() {
+    const engine = getEngineType();
+    const insertionTableName = document.getElementById("insertionTableName").value;
+    const insertionData = document.getElementById("insertionData").value;
+    data = {
+        table_name: insertionTableName,
+        data: insertionData,
+        engine: engine
+    }
+    try {
+        res = await post("/insertion", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}
