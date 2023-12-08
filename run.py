@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, send_from_directory
 from flask_cors import CORS
 from Engine.nosql import NoSQL
 from Engine.relational import Relational
+import re
 
 from config import BASE_DIR
 
@@ -157,6 +158,66 @@ def join():
     if not ok:
         return "Error occurred"
     return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+
+@app.route('/aggregate', methods=['POST'])
+def aggregate():
+    # Get data from request
+    data = request.get_json()
+    engine = data.get('engine')
+    table_name = data.get('table_name')
+    to_find = data.get('to_find')
+    group_by = data.get('group_by')
+    if to_find == '':
+        group(engine, table_name, group_by)
+    elif group_by == '':
+        aggregation_method = re.match(r'(.*?)\((.*?)\)', to_find).group(1)
+        aggregation_field = re.match(r'(.*?)\((.*?)\)', to_find).group(2)
+        aggregate_table(engine, table_name, aggregation_method, aggregation_field)
+    else:
+        aggregation_method = re.match(r'(.*?)\((.*?)\)', to_find).group(1)
+        aggregation_field = re.match(r'(.*?)\((.*?)\)', to_find).group(2)
+        aggregate_group(engine, table_name, aggregation_method, aggregation_field, group_by)
+    return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+
+def aggregate_group(engine, table_name, aggregation_method, aggregation_field, group_field):
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].aggregate(table_name, aggregation_method, aggregation_field, group_field, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].aggregate(table_name, aggregation_method, aggregation_field, group_field, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+
+def aggregate_table(engine, table_name, aggregation_method, aggregation_field):
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].aggregate_table(table_name, aggregation_method, aggregation_field, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].aggregate_table(table_name, aggregation_method, aggregation_field, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+
+def group(engine, table_name, group_field):
+    # open output file
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    # call the specified engine
+    if engine == 'relational':
+        ok = app.config["RELATIONAL_ENGINE"].group(table_name, group_field, io_output)
+    else:
+        ok = app.config["NOSQL_ENGINE"].group(table_name, group_field, io_output)
+    # close output file
+    io_output.close()
+    if not ok:
+        return "Error occurred"
+
 
 if __name__ == "__main__":
 	app.run()

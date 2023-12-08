@@ -338,6 +338,49 @@
                         </div>
                     </div>
                 </div>
+                <!-- Aggregation -->
+                <div class="card mt-3">
+                    <h5 class="card-header">Aggregation</h5>
+                    <div class="card-body">
+                        <div
+                            class="row d-flex justify-content-center text-center"
+                        >
+                            <div class="col-12">
+                                <div class="input-group">
+                                    <div class="input-group-text">
+                                        Table Name
+                                    </div>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="aggregateTableName"
+                                    />
+                                    <div class="input-group-text">
+                                        To Find
+                                    </div>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="aggregateToFind"
+                                    />
+                                    <div class="input-group-text">Group By</div>
+                                    <input
+                                        type="text"
+                                        class="form-control"
+                                        id="aggregateGroupBy"
+                                    />
+                                    <button
+                                        type="button"
+                                        class="btn btn-primary"
+                                        onclick="aggregate()"
+                                    >
+                                        Get Result
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Result Display -->
                 <div class="card mt-3 mb-5">

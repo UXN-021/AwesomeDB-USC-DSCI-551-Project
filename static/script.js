@@ -150,3 +150,22 @@ async function join() {
         console.log(err)
     }
 }
+
+async function aggregate() {
+    const engine = getEngineType();
+    const aggregateTableName = document.getElementById("aggregateTableName").value;
+    const aggregateToFind = document.getElementById("aggregateToFind").value;
+    const aggregateGroupBy = document.getElementById("aggregateGroupBy").value;
+    data = {
+        table_name: aggregateTableName,
+        to_find: aggregateToFind,
+        group_by: aggregateGroupBy,
+        engine: engine
+    }
+    try {
+        res = await post("/aggregate", data)
+        display(res)
+    } catch(err) {
+        console.log(err)
+    }
+}
