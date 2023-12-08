@@ -24,6 +24,26 @@ function getEngineType() {
     }
 }
 
+async function load() {
+    const engine = getEngineType();
+    const datasetToLoad = document.getElementById("datasetToLoad").files[0]
+    if (datasetToLoad) {
+        const formData = new FormData();
+        formData.append("file", datasetToLoad);
+        formData.append("engine", engine);
+        try {
+            res = await fetch("/load", {
+                method: 'POST',
+                body: formData
+            });
+            const resData = await res.text();
+            display(resData);
+        } catch(err) {
+            console.log(err)
+        }
+    }
+}
+
 async function projection() {
     const engine = getEngineType();
     const projectionTableName = document.getElementById("projectionTableName").value;

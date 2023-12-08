@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, send_from_directory
-from flask_cors import CORS
 from Engine.nosql import NoSQL
 from Engine.relational import Relational
 import re
@@ -14,6 +13,26 @@ app.config["NOSQL_ENGINE"] = NoSQL()
 @app.route('/')
 def index():
     return send_from_directory("static", "index.html")
+
+@app.route('/load', methods=['POST'])
+def load():
+    io_output = open(f"{app.config['RESULT_DIR']}/result.txt", "w")
+    engine = request.form['engine']
+    try:
+        datasetToLoad = request.files['file']
+        if datasetToLoad:
+            datasetToLoad.save(f'ToBeLoaded/{datasetToLoad.filename}')
+        if engine == 'relational':
+            ok = result = app.config["RELATIONAL_ENGINE"].load_data(datasetToLoad.filename, io_output)
+        else:
+            ok = result = app.config["NOSQL_ENGINE"].load_data(datasetToLoad.filename, io_output)
+        if not ok:
+            return "Error occurred"
+        # close output file
+        io_output.close()
+        return send_from_directory(app.config["RESULT_DIR"], "result.txt")
+    except Exception as e:
+        return jsonify({'error': f'Error occurred: {str(e)}'}), 500
 
 @app.route('/projection', methods=['POST'])
 def show_data():

@@ -67,7 +67,7 @@ class Relational(BaseEngine):
         if not file_name.endswith(".csv"):
             print(f"File {file_name} is not a csv file", file=io_output)
             return True
-        print("loading...", file=io_output)
+        print("loading...")
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
         table_storage_path = f"{BASE_DIR}/Storage/Relational/{table_name}"

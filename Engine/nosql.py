@@ -57,7 +57,7 @@ class NoSQL(BaseEngine):
         if not file_name.endswith(".csv"):
             print("file must be a csv file", file=io_output)
             return True
-        print("loading data...", file=io_output)
+        print("loading data...")
         csv_file_path = f"{BASE_DIR}/ToBeLoaded/{file_name}"
         table_name = file_name.split(".")[0]
         table_storage_path = f"{BASE_DIR}/Storage/NoSQL/{table_name}"
