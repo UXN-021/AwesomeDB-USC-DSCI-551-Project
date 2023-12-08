@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, Response
 from contextlib import contextmanager
 from flask_cors import CORS
 from Engine.relational import Relational  
+from Engine.nosql import NoSQL
 from io import TextIOBase
 from io import StringIO
 import io
@@ -12,14 +13,27 @@ import sys
 app = Flask(__name__)
 CORS(app)  
 
-
-relational_db = Relational()
+selected_db = Relational()
 
 
 
 @app.route('/')
 def index():
     return render_template('page.html')
+
+@app.route('/select_database', methods=['POST'])
+def select_database():
+    global selected_db
+
+    data = request.get_json()
+    database_type = data.get('database_type')
+
+    if database_type == 'relational':
+        selected_db = Relational()
+    elif database_type == 'nosql':
+        selected_db = NoSQL()
+
+    return jsonify({'success': True, 'message': f'Switched to {database_type} database'})
 
 
 @app.route('/create_table', methods=['POST'])
@@ -35,7 +49,7 @@ def create_table():
         fields = data['fields']
 
         # Perform table creation logic
-        result = relational_db.create_table(table_name, fields)
+        result = selected_db.create_table(table_name, fields)
 
         return jsonify({'result': result})
 
@@ -48,7 +62,7 @@ def upload_file():
         file = request.files['file']
         if file:
             file.save(f'ToBeLoaded/{file.filename}')  
-            result = relational_db.load_data(file.filename)  
+            result = selected_db.load_data(file.filename)  
             return jsonify({'success': result})
         else:
             return jsonify({'error': 'No file provided'})
@@ -62,7 +76,7 @@ def insert_data():
     try:
         table_name = request.form['table_name']
         data = request.form['data']
-        result = relational_db.insert_data(table_name, data.split(','))
+        result = selected_db.insert_data(table_name, data.split(','))
         return jsonify({'success': result})
     except Exception as e:
         return jsonify({'error': str(e)})
@@ -74,7 +88,7 @@ def delete_data():
     condition = data['condition']
 
 
-    result = relational_db.delete_data(table_name, condition)
+    result = selected_db.delete_data(table_name, condition)
 
     return jsonify({'result': 'Deletion succeeded' if result else 'Deletion failed'})
 
@@ -88,7 +102,7 @@ def update_data():
         table_name = request.form['tableName']
         condition = request.form['condition']
         updated_data = request.form['updatedData']
-        result = relational_db.update_data(table_name, condition, updated_data.split(','))
+        result = selected_db.update_data(table_name, condition, updated_data.split(','))
         return jsonify({'success': result})
     except Exception as e:
         return jsonify({'error': str(e)})
@@ -115,7 +129,7 @@ def project_fields():
         table_name = data.get('table_name')
         fields = data.get('fields').split(',')
 
-        result_content = relational_db.projection(table_name, fields)
+        result_content = selected_db.projection(table_name, fields)
 
         return jsonify({'success': True, 'content': result_content})
 
@@ -130,7 +144,7 @@ def apply_filter():
         fields = request.form.get('fields').split(',')
         condition = request.form.get('condition')
 
-        output = relational_db.filtering(table_name, fields, condition)
+        output = selected_db.filtering(table_name, fields, condition)
 
         return jsonify({'success': True, 'output': output})
 
@@ -149,7 +163,7 @@ def aggregate():
         group_by_field = data.get('group_by_field')
 
         # Call the aggregate 
-        result = relational_db.aggregate(
+        result = selected_db.aggregate(
             table_name,
             aggregate_method,
             aggregate_field,
@@ -171,7 +185,7 @@ def order():
     order_direction = data['order_method']
 
     # Call the order method from the Relational instance
-    success = relational_db.order(table_name, order_field, order_direction)
+    success = selected_db.order(table_name, order_field, order_direction)
 
     if success:
         return jsonify({'success': True, 'message': 'Order successful'})
@@ -186,7 +200,7 @@ def join_tables():
         table2 = request.form.get('table2')
         condition = request.form.get('condition')
 
-        result = relational_db.join(table1, table2, condition)
+        result = selected_db.join(table1, table2, condition)
 
         return jsonify({'success': True, 'message': 'Join operation successful'})
     except Exception as e:

@@ -92,8 +92,8 @@
   <div>
     <label for="databaseSelect">Database:</label>
     <select id="databaseSelect" onchange="selectDatabase()">
+      <option value="relational">Relational</option>
       <option value="nosql">NoSQL</option>
-      <option value="relational">Relational Database</option>
     </select>
     
   
@@ -217,10 +217,28 @@ function addContentToDisplayArea(content) {
 </script>
 
 <script>
-  function selectDatabase() {
+function selectDatabase() {
     const selectedDatabase = document.getElementById('databaseSelect').value;
     console.log(`Selected Database: ${selectedDatabase}`);
-  }
+
+    // Make an AJAX request to switch the database type
+    fetch('/select_database', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            database_type: selectedDatabase
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+    
+    })
+    .catch(error => console.error('Error:', error));
+}
+
 
   function uploadFile() {
     const fileInput = document.getElementById('fileInput');
@@ -513,8 +531,11 @@ function applyFilter() {
 }
 
 function deleteData() {
-    var tableName = document.getElementById('deleteInput').value;
-    var condition = document.getElementById('deleteInput2').value;
+    var tableNameInput = document.getElementById('deleteInput');
+    var conditionInput = document.getElementById('deleteInput2');
+
+    var tableName = tableNameInput.value;
+    var condition = conditionInput.value;
 
     fetch('/delete_data', {
         method: 'POST',
@@ -536,6 +557,9 @@ function deleteData() {
         var resultMessageElement = document.getElementById('resultMessage');
         if (resultMessageElement) {
             resultMessageElement.innerText = data.result;
+            // Reset input fields
+            tableNameInput.value = '';
+            conditionInput.value = '';
         } else {
             console.error('Element with id "resultMessage" not found.');
         }
@@ -545,6 +569,9 @@ function deleteData() {
         var resultMessageElement = document.getElementById('resultMessage');
         if (resultMessageElement) {
             resultMessageElement.innerText = 'Error occurred while deleting data.';
+            // Reset input fields
+            tableNameInput.value = '';
+            conditionInput.value = '';
         } else {
             console.error('Element with id "resultMessage" not found.');
         }
@@ -554,10 +581,15 @@ function deleteData() {
 }
 
 function performAggregation() {
-    const tableName = document.getElementById('aggregationInput').value;
-    const aggregateMethod = document.getElementById('aggregationInput2').value;
-    const aggregateField = document.getElementById('aggregationInput3').value;
-    const groupByField = document.getElementById('aggregationInput4').value;
+    const tableNameInput = document.getElementById('aggregationInput');
+    const aggregateMethodInput = document.getElementById('aggregationInput2');
+    const aggregateFieldInput = document.getElementById('aggregationInput3');
+    const groupByFieldInput = document.getElementById('aggregationInput4');
+
+    const tableName = tableNameInput.value;
+    const aggregateMethod = aggregateMethodInput.value;
+    const aggregateField = aggregateFieldInput.value;
+    const groupByField = groupByFieldInput.value;
 
     fetch('/aggregate', {
         method: 'POST',
@@ -580,6 +612,12 @@ function performAggregation() {
         } else {
             addContentToDisplayArea(`Error: ${result.error}`);
         }
+
+        // Clear the input fields
+        tableNameInput.value = '';
+        aggregateMethodInput.value = '';
+        aggregateFieldInput.value = '';
+        groupByFieldInput.value = '';
     })
     .catch(error => {
         console.error('Error during aggregation:', error);
@@ -588,9 +626,13 @@ function performAggregation() {
 }
 
 function performOrder() {
-    const tableName = document.getElementById('orderInput').value;
-    const orderByField = document.getElementById('orderInput2').value;
-    const orderDirection = document.getElementById('orderInput3').value;
+    const tableNameInput = document.getElementById('orderInput');
+    const orderByFieldInput = document.getElementById('orderInput2');
+    const orderDirectionInput = document.getElementById('orderInput3');
+
+    const tableName = tableNameInput.value;
+    const orderByField = orderByFieldInput.value;
+    const orderDirection = orderDirectionInput.value;
 
     // Make an AJAX request to the Flask /order route
     fetch('/order', {
@@ -609,9 +651,9 @@ function performOrder() {
         if (result.success) {
             addContentToDisplayArea('Order successful');
             // Reset input fields
-            document.getElementById('orderInput').value = '';
-            document.getElementById('orderInput2').value = '';
-            document.getElementById('orderInput3').value = '';
+            tableNameInput.value = '';
+            orderByFieldInput.value = '';
+            orderDirectionInput.value = '';
         } else {
             addContentToDisplayArea(`Order failed: ${result.error}`);
         }
