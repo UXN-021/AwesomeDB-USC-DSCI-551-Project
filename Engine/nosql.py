@@ -337,7 +337,42 @@ class NoSQL(BaseEngine):
         clear_temp_files()
         print("grouping succeeded", file=io_output)
         return True
-    
+
+    def join(self, left: str, right: str, condition: str, io_output=sys.stdout) -> bool:
+        # check if tables exist
+        if not self._table_exists(left):
+            print(f"Table {left} does not exist!", file=io_output)
+            return True
+        if not self._table_exists(right):
+            print(f"Table {right} does not exist!", file=io_output)
+            return True
+        # extract the fields from the condition
+        match = re.match(r"(.*?)\s*(!=|=|>=|<=|>|<)\s*(.*)", condition)
+        if match is None:
+            print(f"Invalid condition {condition}!", file=io_output)
+            return True
+        left_field, op, right_field = match.groups()
+        for right_chunk in self._get_table_chunks(right):
+            right_docs = self._read_docs_from_file(right_chunk)
+            for left_chunk in self._get_table_chunks(left):
+                left_docs = self._read_docs_from_file(left_chunk)
+                for right_doc in right_docs:
+                    for left_doc in left_docs:
+                        if not right_field in right_doc:
+                            continue
+                        if not left_field in left_doc:
+                            continue
+                        right_field_value = right_doc[right_field]
+                        if self._doc_meets_condition(left_doc, f"{left_field}{op}{right_field_value}"):
+                            joined_doc = {}
+                            for field in left_doc:
+                                joined_doc[f"{left}.{field}"] = left_doc[field]
+                            for field in right_doc:
+                                joined_doc[f"{right}.{field}"] = right_doc[field]
+                            self._print_doc(joined_doc, io_output=io_output)
+        print("join succeeded", file=io_output)
+        return True
+        
     # ========================================================
     #                  ***** Helpers *****
     #
