@@ -625,6 +625,8 @@ To start the web application, run `python3 run.py` and navigate to the index fil
 
 Following screenshot is an example to use relational engine to query data. The results will be displayed in the <u>Result Display</u> part after you click the blue buttons.
 
+\* Note that if you want to upload a new `.csv` dataset using the web application, you can use the Upload Dataset section. It will send the `.csv` to the backend and the backend will store the dataset in `/ToBeLoaded` directory. Then it will be loaded to the database storage. Since we've already included our dataset for demostration in the `/ToBeLoaded` directory, we skipped the step to show the upload function in our web application.
+
 ![image-20231208222506515](img/image-20231208222506515.png)
 
 ## Web - NoSQL

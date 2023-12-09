@@ -1,10 +1,24 @@
 [TOC]
 
+Group 34
+
+Tangzhou Hao
+
+Yuqi Zhang
+
+Yuxin Tian
+
 # Introduction
 
 We are a three person team (group 34) and we built a database system called AwesomeDB. We designed different database engine for our database system that provides support for relational and nosql functionalities. We provided two real-life large datasets form kaggle, `movies.csv` and `rotten_tomatoes_movies.csv` for testing our databases. Since the two data set doesn't have tables to be joined, we also supplied the `joinTable1.csv` and `joinTable2.csv` for testing join operations. All storage and operations are processed in chunks so that we only need to load a limited amount of data into main memory at a time. This project also provides a CLI and Web app for users to interact with our database system. We also designed a query language of our own to query the database in the CLI.
 
 # Planned Implementation
+
+Our proposed database system is designed to empower users to interact with databases using English-like syntax for a range of operations, including insertion, deletion, updating, grouping, ordering, joining, projection, and aggregation. We will parse and execute these syntaxes. The system will feature a user interface that allows users to choose between a relational engine or a NoSQL engine for executing operations.
+
+For relational databases, our plan is to split files into chunks in CSV format to minimize memory usage. For NoSQL databases, we intend to split files into chunks in JSON format for the same purpose. Following the chunking process, we will implement each function by handling individual chunks.
+
+In addition, we aim to develop a web application that showcases all functionalities and displays results on the frontend. The application will communicate with the web backend, sending the pathname of the result file. For the backend, our plan is to build it using Flask, which will then relay this file to the frontend via HTTP. This comprehensive design aims to provide a seamless and user-friendly interface for database operations, accessible through both the command-line interface (CLI) and web applications.
 
 # Architecture Design
 
@@ -129,6 +143,8 @@ The backend receives the HTTP request and choose the corresponding database engi
 
 The insertion method calls the `_insert_row()` or `_insert_doc()` functions as we discussed about in the <u>Storage and Chunking</u> section. Following is a screenshot of the relational insertion.
 
+For example, in our NoSQL database implementation, the `insert_data` method within the NoSQL class, extending the BaseEngine class, handles data insertion. First, it checks if the specified table exists, halting the process if the table is absent. For existing tables, the method takes input data, provided as a list of `field_name=field_value` pairs, splits these strings, and converts values to the correct data type using the _get_typed_value method. This ensures the data is in a JSON-compatible format. The converted data is then compiled into a document and inserted into the table with the` _insert_doc` method. A confirmation message is displayed upon successful insertion, confirming the data has been added.
+
 ![image-20231208183555177](img/image-20231208183555177.png)
 
 ## Deletion/Updating/Projection/Filtering
@@ -142,6 +158,30 @@ All of the four methods take a similar approach to do the operation in chunks.
 Then the system then proceeds to the next chunk. Below is an example of how deletion works in relational DB.
 
 ![image-20231208184020818](img/image-20231208184020818.png)
+
+### Deletion
+
+Relational: We iterate through all chunks and delete the row that meets the condition. retrieving the schema and types information for the table, For each chunk, it opens the file in read and write mode ("r+"). It reads the typed rows from the chunk using the _read_typed_rows method, which likely involves reading and parsing the rows with their associated data types. It truncates the file to prepare for replacement and opens the same file in write mode ("w") and writes back the rows that do not meet the deletion condition.
+
+NoSQL: For each chunk obtained using _get_table_chunks, the method reads the documents from the chunk using the _read_docs_from_file method. It then clears the content of the file using _clear_file. Using the filter function, it selects the documents that do not meet the deletion condition. Finally, it writes the filtered documents back to the file using the _write_docs_to_file method.
+
+### Update
+
+Relational: It retrieves the schema and types information firstly, Iterates Through Chunks and Update Rows: For each chunk obtained using _get_table_chunks, the method opens the file in read and write mode ("r+"). It reads the typed rows from the chunk using the _read_typed_rows method and clears the file for replacement. Then opens the same file in write mode ("w") and iterates through the typed rows. For each row, if it meets the specified condition, it updates the row based on the provided data: Converts the row to a dictionary. Updates the values in the dictionary based on the new data. Converts the updated dictionary back to a row and writes the new row to the file. If the row does not meet the condition, it writes the existing row to the file without modification
+
+NoSQL: reads the documents from the chunk and obtains each chunk. It then clears the content of the file For each document in the chunk, if it meets the specified condition: It iterates through the provided data, updating the corresponding fields in the document. It writes the updated document back to the file
+
+### Projection
+
+In our relational database, the projection method is designed to display specific fields from a table. After confirming the existence of the table, we get the schema of the table, and then create a schema for the projected data, either including all fields or only specified fields. First we check if the requested fields exist in the table’s schema, printing an error and halting if any field is not found. Once verified, it prepares a format string for displaying data and prints the header. Then iterates through the table's data chunks, converts each row into a dictionary, and prints only the requested fields using the prepared format. The process concludes with a success message, indicating the successful completion of the data projection operation. 
+
+In our NoSQL database system, the projection function begins by verifying the existence of the table.t then reads data in chunks from the table using _get_table_chunks and processes each document with _read_docs_from_file. For every document, it either displays the entire document if the user requests all fields or only includes specific fields as per the user's request. The method checks each requested field with the field in the document, including them in the result if they match. Then we print the projected result.
+
+### Filtering
+
+Relational: It retrieves the schema and types information first. Then, creating projection schema: If the specified fields include all fields ('*'), the projection schema is set to the entire table schema. If specific fields are provided, it checks if each field exists in the table schema. Then, It creates a schema for the projection table based on the specified fields. Next, Iterating through chunks and printing filtered Rows: For each chunk obtained using _get_table_chunks, the method opens the file in read mode. It reads the typed rows from the chunk. For each typed row, if it meets the specified condition, It converts the row to a dictionary
+
+NoSQL: For each chunk obtained using _get_table_chunks, the method reads the documents from the chunk. For each document in the chunk, if it meets the specified condition: If the specified fields include all fields ('*'), the entire document is projected. Otherwise, only the specified fields are included in the projected document.
 
 ## Sorting
 
@@ -217,8 +257,28 @@ We also supports and optimized the cases to
 
 # Learning Outcomes
 
+In our database system project, we encountered various challenges. Managing large CSV files effectively, particularly breaking them down for efficient memory usage, was a key challenge. Creating an English-like query language was another challenge, as it needed to be both user-friendly and capable of handling complex database operations.
+
+Our learning heavily focused on key database functionalities like external sorting. This was crucial for operations such as grouping and aggregation, where sorting segmented files before processing was necessary.
+
+Furthermore, the development of a web application to display our functions introduced added complexity. It required a seamless integration of an accessible frontend interface with the more complex backend database system.
+
+Understanding and following the project guidelines also posed a challenge. The project had various specific requirements, and we often found ourselves revisiting the guidelines to make sure our implementation aligned with the expected standards. This process was crucial in ensuring that our project met all the necessary criteria.
+
+In our AwesomeDB project, we mastered optimizing memory usage for large CSV files and developed a custom query language, enhancing our skills in database management. We deepened our understanding of relational and NoSQL data types, along with functionalities like join, group by, filtering, and aggregation. Specifically, we gained insights into nested loop joins and external sorting. Additionally, we learned to build a web application to showcase our database system, improving our full-stack development capabilities. This project significantly advanced our proficiency in handling diverse database operations and user interface design
+
 # Individual Contribution
+
+Tangzhou Hao - Relational Engine
+
+Yuqi Zhang - NoSQL Engine
+
+Yuxin Tian - Query Language Design and Web Application
 
 # Conclusion
 
+As we wrap up the development of AwesomeDB, it's incredibly rewarding to see our vision realized in our hands-on project. Throughout the development process, our team demonstrated exceptional collaboration, problem-solving, and adaptability. Challenges were met with creative solutions, and the result is a robust database system and demonstration of our thorough understanding of DSCI551 knowledge.
+
 # Future Scope
+
+Currently, our project does not utilize B+ tree indexing. However, I believe that as part of the future scope, we can enhance our system by incorporating B+ tree indexing as a key component. B+ tree indexing serves the purpose of optimizing data retrieval operations in databases. By integrating B+ tree indexing into our project, we can significantly improve the efficiency of search, insertion, and deletion operations. And will contribute to overall performance enhancements and expedite database queries, ensuring a more efficient and streamlined system.
