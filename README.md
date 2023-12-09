@@ -324,6 +324,28 @@ group succeeded
 
 ### Join
 
+Load the dataset `joinTable1.csv` to DB
+
+```
+your query>load data from joinTable1.csv;
+```
+
+Load the dataset `joinTable2.csv` to DB
+
+```
+your query>load data from joinTable2.csv;
+```
+
+Perform inner join using `join <left_table> and <right_table> on <condition>`
+
+```
+your query>join joinTable1 and joinTable2 on id=id;
+```
+
+```
+your query>join joinTable1 and joinTable2 on id>id;
+```
+
 ### Sorting
 
 We support sorting by ascending or descending order.
@@ -560,6 +582,28 @@ grouping succeeded
 ```
 
 ### Join
+
+Load the dataset `joinTable1.csv` to DB
+
+```
+your query>load data from joinTable1.csv;
+```
+
+Load the dataset `joinTable2.csv` to DB
+
+```
+your query>load data from joinTable2.csv;
+```
+
+Perform inner join using `join <left_table> and <right_table> on <condition>`
+
+```
+your query>join joinTable1 and joinTable2 on id=id;
+```
+
+```
+your query>join joinTable1 and joinTable2 on id>id;
+```
 
 ### Sorting
 
