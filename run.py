@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from Engine.nosql import NoSQL
 from Engine.relational import Relational
 import re
