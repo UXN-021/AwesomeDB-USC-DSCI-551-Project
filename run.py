@@ -23,9 +23,9 @@ def load():
         if datasetToLoad:
             datasetToLoad.save(f'ToBeLoaded/{datasetToLoad.filename}')
         if engine == 'relational':
-            ok = result = app.config["RELATIONAL_ENGINE"].load_data(datasetToLoad.filename, io_output)
+            ok = app.config["RELATIONAL_ENGINE"].load_data(datasetToLoad.filename, io_output)
         else:
-            ok = result = app.config["NOSQL_ENGINE"].load_data(datasetToLoad.filename, io_output)
+            ok = app.config["NOSQL_ENGINE"].load_data(datasetToLoad.filename, io_output)
         if not ok:
             return "Error occurred"
         # close output file
