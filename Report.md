@@ -1,5 +1,7 @@
 [TOC]
 
+<div style="page-break-before:always"></div>
+
 Group 34
 
 Tangzhou Hao
@@ -77,6 +79,8 @@ In addition, we aim to develop a web application that showcases all functionalit
 
 We store all data loaded in our database under the the `/Storage` directory.
 
+<div style="page-break-before:always"></div>
+
 ```bash
 .
 ├── Storage                 # Stores all table data
@@ -111,6 +115,8 @@ The `CHUNK_SIZE` is specified in the `/config.py` file.
 
 Following is a screenshots of the `_insert_row()` function.
 
+<div style="page-break-before:always"></div>
+
 ![image-20231208155429465](img/image-20231208155429465.png)
 
 ## CLI
@@ -131,11 +137,15 @@ To start the backend server, run `python3 run.py`. Use a web browser to navigate
 
 Following is a screenshot of the web page and the query result of showing the fields `name,rating` from the movies dataset.
 
+<div style="page-break-before:always"></div>
+
 ![image-20231208163326194](img/image-20231208163326194.png)
 
 <img src="img/image-20231208163337679.png" alt="image-20231208163337679" style="zoom:50%;" />
 
 The backend receives the HTTP request and choose the corresponding database engine to execute the query. Then it sends back a result file to the front end. Following is a description of the web backend function to filter data.
+
+<div style="page-break-before:always"></div>
 
 ![image-20231208181326152](img/image-20231208181326152.png)
 
@@ -144,6 +154,8 @@ The backend receives the HTTP request and choose the corresponding database engi
 The insertion method calls the `_insert_row()` or `_insert_doc()` functions as we discussed about in the <u>Storage and Chunking</u> section. Following is a screenshot of the relational insertion.
 
 For example, in our NoSQL database implementation, the `insert_data` method within the NoSQL class, extending the BaseEngine class, handles data insertion. First, it checks if the specified table exists, halting the process if the table is absent. For existing tables, the method takes input data, provided as a list of `field_name=field_value` pairs, splits these strings, and converts values to the correct data type using the _get_typed_value method. This ensures the data is in a JSON-compatible format. The converted data is then compiled into a document and inserted into the table with the` _insert_doc` method. A confirmation message is displayed upon successful insertion, confirming the data has been added.
+
+<div style="page-break-before:always"></div>
 
 ![image-20231208183555177](img/image-20231208183555177.png)
 
@@ -156,6 +168,8 @@ All of the four methods take a similar approach to do the operation in chunks.
 3. Then process each row/doc, and print the result to the `io_output`. 
 
 Then the system then proceeds to the next chunk. Below is an example of how deletion works in relational DB.
+
+<div style="page-break-before:always"></div>
 
 ![image-20231208184020818](img/image-20231208184020818.png)
 
@@ -175,13 +189,29 @@ NoSQL: reads the documents from the chunk and obtains each chunk. It then clears
 
 In our relational database, the projection method is designed to display specific fields from a table. After confirming the existence of the table, we get the schema of the table, and then create a schema for the projected data, either including all fields or only specified fields. First we check if the requested fields exist in the table’s schema, printing an error and halting if any field is not found. Once verified, it prepares a format string for displaying data and prints the header. Then iterates through the table's data chunks, converts each row into a dictionary, and prints only the requested fields using the prepared format. The process concludes with a success message, indicating the successful completion of the data projection operation. 
 
+<div style="page-break-before:always"></div>
+
+<img src="img/image-20231208232407798.png" alt="image-20231208232407798" style="zoom:50%;" />
+
 In our NoSQL database system, the projection function begins by verifying the existence of the table.t then reads data in chunks from the table using _get_table_chunks and processes each document with _read_docs_from_file. For every document, it either displays the entire document if the user requests all fields or only includes specific fields as per the user's request. The method checks each requested field with the field in the document, including them in the result if they match. Then we print the projected result.
+
+<div style="page-break-before:always"></div>
+
+<img src="img/image-20231208232435916.png" alt="image-20231208232435916" style="zoom:50%;" />
 
 ### Filtering
 
 Relational: It retrieves the schema and types information first. Then, creating projection schema: If the specified fields include all fields ('*'), the projection schema is set to the entire table schema. If specific fields are provided, it checks if each field exists in the table schema. Then, It creates a schema for the projection table based on the specified fields. Next, Iterating through chunks and printing filtered Rows: For each chunk obtained using _get_table_chunks, the method opens the file in read mode. It reads the typed rows from the chunk. For each typed row, if it meets the specified condition, It converts the row to a dictionary
 
+<div style="page-break-before:always"></div>
+
+<img src="img/image-20231208232511895.png" alt="image-20231208232511895" style="zoom:50%;" />
+
 NoSQL: For each chunk obtained using _get_table_chunks, the method reads the documents from the chunk. For each document in the chunk, if it meets the specified condition: If the specified fields include all fields ('*'), the entire document is projected. Otherwise, only the specified fields are included in the projected document.
+
+<div style="page-break-before:always"></div>
+
+![image-20231208232528005](img/image-20231208232528005.png)
 
 ## Sorting
 
@@ -211,6 +241,8 @@ After all the runs are merged into one run in the temp dir, we return the path o
 
 The following is a screenshot of the merging phase.
 
+<div style="page-break-before:always"></div>
+
 ![image-20231208190141867](img/image-20231208190141867.png)
 
 Then we can called the `_external_sort()` method to get a path in the temp directory that stores the sorted data.
@@ -220,6 +252,8 @@ Then we can called the `_external_sort()` method to get a path in the temp direc
 For both relational and NoSQL database, we implemented an inner join. We use nested loop join for the relational database and block nested loop join for the NoSQL database. The difference is the result of the difference of the helper method we designed to retreive data from chunks.
 
 Following is a screenshot of the NoSQL join operation.
+
+<div style="page-break-before:always"></div>
 
 ![image-20231208191642210](img/image-20231208191642210.png)
 
@@ -240,6 +274,8 @@ For group and aggregation, we utilized the external sort method we implemented a
 4. We proceed to the next row until end of file
 
 Below is a screenshot of the aggregation and groupping in the NoSQL database.
+
+<div style="page-break-before:always"></div>
 
 ![image-20231208193409458](img/image-20231208193409458.png)
 
