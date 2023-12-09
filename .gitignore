@@ -7,6 +7,10 @@ Temp/*
 Results/*
 !.gitkeep
 !.keep
+!ToBeLoaded/joinTable1.csv
+!ToBeLoaded/joinTable2.csv
+!ToBeLoaded/movies.csv
+!ToBeLoaded/rotten_tomatoes_movies.csv
 
 **/.DS_Store
 
