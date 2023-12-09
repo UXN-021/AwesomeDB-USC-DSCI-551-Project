@@ -788,10 +788,10 @@ class Relational(BaseEngine):
         return f"{TEMP_DIR}/chunk_{chunk_num}_pass_{pass_num}.csv"
 
     def _get_chunk_number_from_temp_file(self, temp_file_name: str) -> int:
-        return int(temp_file_name.split(".")[0].split("_")[1])
+        return int(temp_file_name.split("/")[-1].split(".")[0].split("_")[1])
     
     def _get_pass_number_from_temp_file(self, temp_file_name: str) -> int:
-        return int(temp_file_name.split(".")[0].split("_")[3])
+        return int(temp_file_name.split("/")[-1].split(".")[0].split("_")[3])
     
     def _get_temp_chunks(self) -> list:
         temp_chunks = []
