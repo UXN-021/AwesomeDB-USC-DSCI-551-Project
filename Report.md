@@ -93,6 +93,8 @@ For relational data, we store the chunks as `.csv` files. We also have a `schema
 
 For NoSQL storage, all data are stored as JSON docs. Therefore, we don't store the chunks as `.csv` but as a text file with no file extension. Each line in the chunks is a string that can be deserialized into JSON docs.
 
+The `CHUNK_SIZE` is specified in the `/config.py` file.
+
 Following is a screenshots of the `_insert_row()` function.
 
 ![image-20231208155429465](img/image-20231208155429465.png)
@@ -123,7 +125,93 @@ The backend receives the HTTP request and choose the corresponding database engi
 
 ![image-20231208181326152](img/image-20231208181326152.png)
 
-## 
+## Insertion
+
+The insertion method calls the `_insert_row()` or `_insert_doc()` functions as we discussed about in the <u>Storage and Chunking</u> section. Following is a screenshot of the relational insertion.
+
+![image-20231208183555177](img/image-20231208183555177.png)
+
+## Deletion/Updating/Projection/Filtering
+
+All of the four methods take a similar approach to do the operation in chunks. 
+
+1. The system loads one chunk into memory
+2. Find the rows/docs that satisfies the condition, 
+3. Then process each row/doc, and print the result to the `io_output`. 
+
+Then the system then proceeds to the next chunk. Below is an example of how deletion works in relational DB.
+
+![image-20231208184020818](img/image-20231208184020818.png)
+
+## Sorting
+
+The key part of sorting is to implement external merge sort. It is split into two phases.
+
+Sorting phase:
+
+1. The system loads one chunk into memory
+2. Sort the chunk, copy the result into the temp folder
+3. Close the reader
+4. Proceed to the next chunk
+5. ....
+
+Below is the implementation of the sorting phase
+
+![image-20231208185316441](img/image-20231208185316441.png)
+
+After the sorting phase, the temp folders are filled with sorted chunks. We can now start the mergine phase using $k-$way mergine where $k$ is the `CHUNK_SIZE`
+
+1. For `CHUNK_SIZE` number of runs, group them into 1 merge group
+2. Load one row/doc from each run in the current merge group into a priority queue.
+3. Poll the largest/smallest elements write to another run for the next pass, and load next row/doc from the same run if there are any row/doc remaining.
+4. Proceed to the next merge group.
+5. If we are done with the current pass, we proceed to the next pass.
+
+After all the runs are merged into one run in the temp dir, we return the path of the result.
+
+The following is a screenshot of the merging phase.
+
+![image-20231208190141867](img/image-20231208190141867.png)
+
+Then we can called the `_external_sort()` method to get a path in the temp directory that stores the sorted data.
+
+## Join
+
+For both relational and NoSQL database, we implemented an inner join. We use nested loop join for the relational database and block nested loop join for the NoSQL database. The difference is the result of the difference of the helper method we designed to retreive data from chunks.
+
+Following is a screenshot of the NoSQL join operation.
+
+![image-20231208191642210](img/image-20231208191642210.png)
+
+Note that for both databases we are using the right table as the outter table because we are doing a convertion of condition in the inner loop to satisfy the design of the `_doc_meets_condition()` method. If we use the left table as the outter table, we have to reverse the operator `op`. Using right table as the outter table should be an simpler approach to tackle the same issue. The performance should be the same no matter which table serves as the outter table.
+
+## Group and Aggregation
+
+For group and aggregation, we utilized the external sort method we implemented as described in the <u>sorting</u> section. We support `max, min, sum, avg, count` as aggregation functions. To perform an aggregation with groupping:
+
+1. Do external sort based on the `group_field` on this table and get the temporary sorted file.
+
+2. Read the result row by row
+
+   \* Python `next(reader)` method optimized the function so that it wouldn't load the entire file into memory when we iterate through each row in a file.
+
+3. If the value of the `group_field` changes, we know that we have iterated all the previous group. So we can now output the result of the previous group.
+
+4. We proceed to the next row until end of file
+
+Below is a screenshot of the aggregation and groupping in the NoSQL database.
+
+![image-20231208193409458](img/image-20231208193409458.png)
+
+We also supports and optimized the cases to 
+
+- aggregate a whole table without groupping (the `aggregate_table()` method) and 
+
+  $\rightarrow$ scan the whole table as in filtering without external sorting
+
+- groupping without aggregation (the `group()` method)
+
+  $\rightarrow$ basically remove duplicated values in the group field
 
 
 
