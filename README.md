@@ -3,7 +3,7 @@
 ## `How to run Relational Backend (Note that you need to add ; after each query)`
 - Relational
   - To start our Backend Database System:
-   - python3 main.py
+    - python3 main.py
 
   - you will see: relational or nosql in the terminal
 
